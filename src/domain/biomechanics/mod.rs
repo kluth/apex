@@ -8,7 +8,6 @@ pub mod world;
 #[cfg(test)]
 mod tests {
     use super::rigid_body::{RigidBody, Vector3};
-    
 
     #[test]
     fn test_xpbd_rigid_body_initialization_and_inverse_mass() {

@@ -1,5 +1,5 @@
-use crate::domain::movement::cpg::Cpg;
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::movement::cpg::Cpg;
 
 /// Represents a neural connection between a CPG and a Muscle.
 #[derive(Debug, Clone, PartialEq)]
@@ -55,9 +55,9 @@ mod tests {
             500.0,
         );
         let cpg = Cpg::new(1.0);
-        
+
         let synapse = Synapse::new("Syn_1".to_string(), &cpg, &muscle, 0.8);
-        
+
         assert_eq!(synapse.id(), "Syn_1");
         assert_eq!(synapse.target_muscle_id(), "Biceps");
         assert_eq!(synapse.weight(), 0.8);

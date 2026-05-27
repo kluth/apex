@@ -37,7 +37,7 @@ mod tests {
         let rest_len = 1.0;
         let current_len = 1.2;
         let stiffness = 1000.0;
-        
+
         let force = HillCurve::passive_force(rest_len, current_len, stiffness);
         // k * (0.2)^2 = 1000 * 0.04 = 40.0
         assert!((force - 40.0).abs() < 1e-6);

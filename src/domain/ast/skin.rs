@@ -58,16 +58,16 @@ mod tests {
     fn test_skin_attachment() {
         let mass = Mass::new(1.0).unwrap();
         let femur = Bone::new("Femur".to_string(), mass);
-        
+
         let mut skin = Skin::new("Skin_Femur".to_string(), &femur);
         let hull = CollisionHull {
             id: "Hull_1".to_string(),
             primitive: CollisionPrimitive::Sphere { radius: 0.1 },
             local_offset: (0.0, 0.0, 0.0),
         };
-        
+
         skin.add_hull(hull);
-        
+
         assert_eq!(skin.id(), "Skin_Femur");
         assert_eq!(skin.target_bone_id(), "Femur");
         assert_eq!(skin.hulls().len(), 1);

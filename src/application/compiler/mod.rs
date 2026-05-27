@@ -5,21 +5,23 @@ pub mod validator;
 
 #[cfg(test)]
 mod tests {
+    use super::pipeline::CompilerPipeline;
+    use super::validator::{BiologicalValidator, ValidationError};
     use crate::domain::ast::bone::{Bone, Mass};
     use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
     use crate::domain::ast::muscle::Muscle;
-    use crate::domain::ast::skin::{Skin, CollisionHull, CollisionPrimitive};
+    use crate::domain::ast::skin::{CollisionHull, CollisionPrimitive, Skin};
     use crate::domain::ast::synapse::Synapse;
     use crate::domain::movement::cpg::Cpg;
-    use super::pipeline::CompilerPipeline;
-    use super::validator::{BiologicalValidator, ValidationError};
 
     #[test]
     fn test_full_compilation_from_text() {
         let input = "organism Biped { bone Femur { mass = 2.0 kg; } }";
         let pipeline = CompilerPipeline::new();
-        let topology = pipeline.compile(input).expect("Full compilation should pass");
-        
+        let topology = pipeline
+            .compile(input)
+            .expect("Full compilation should pass");
+
         assert_eq!(topology.node_count(), 1);
     }
 
@@ -27,10 +29,12 @@ mod tests {
     fn test_compiler_lowering_bone_to_topology() {
         let mass = Mass::new(1.0).unwrap();
         let bone_ast = Bone::new("Humerus".to_string(), mass);
-        
+
         let pipeline = CompilerPipeline::new();
-        let topology = pipeline.lower(vec![bone_ast], vec![], vec![], vec![], vec![]).expect("Validation should pass");
-        
+        let topology = pipeline
+            .lower(vec![bone_ast], vec![], vec![], vec![], vec![])
+            .expect("Validation should pass");
+
         assert_eq!(topology.node_count(), 1);
     }
 
@@ -39,7 +43,7 @@ mod tests {
         let mass = Mass::new(1.0).unwrap();
         let femur = Bone::new("Femur".to_string(), mass.clone());
         let tibia = Bone::new("Tibia".to_string(), mass);
-        
+
         let knee = Joint::new(
             "Knee".to_string(),
             JointType::Revolute,
@@ -47,10 +51,13 @@ mod tests {
             &tibia,
             JointAttachment::default(),
             JointAttachment::default(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let pipeline = CompilerPipeline::new();
-        let topology = pipeline.lower(vec![femur, tibia], vec![knee], vec![], vec![], vec![]).expect("Lowering should pass");
+        let topology = pipeline
+            .lower(vec![femur, tibia], vec![knee], vec![], vec![], vec![])
+            .expect("Lowering should pass");
 
         assert_eq!(topology.node_count(), 2);
     }
@@ -60,7 +67,7 @@ mod tests {
         let mass = Mass::new(1.0).unwrap();
         let femur = Bone::new("Femur".to_string(), mass.clone());
         let tibia = Bone::new("Tibia".to_string(), mass);
-        
+
         let biceps = Muscle::new(
             "Biceps".to_string(),
             &femur,
@@ -71,7 +78,9 @@ mod tests {
         );
 
         let pipeline = CompilerPipeline::new();
-        let topology = pipeline.lower(vec![femur, tibia], vec![], vec![biceps], vec![], vec![]).expect("Lowering should pass");
+        let topology = pipeline
+            .lower(vec![femur, tibia], vec![], vec![biceps], vec![], vec![])
+            .expect("Lowering should pass");
 
         assert_eq!(topology.node_count(), 2);
     }
@@ -80,7 +89,7 @@ mod tests {
     fn test_compiler_lowering_skin_to_topology() {
         let mass = Mass::new(1.0).unwrap();
         let femur = Bone::new("Femur".to_string(), mass);
-        
+
         let mut skin = Skin::new("Skin_Femur".to_string(), &femur);
         skin.add_hull(CollisionHull {
             id: "Hull_1".to_string(),
@@ -90,7 +99,7 @@ mod tests {
 
         let pipeline = CompilerPipeline::new();
         let result = pipeline.lower(vec![femur], vec![], vec![], vec![], vec![skin]);
-        
+
         assert!(result.is_ok());
     }
 
@@ -111,8 +120,14 @@ mod tests {
         let synapse = Synapse::new("Syn_1".to_string(), &cpg, &muscle, 1.0);
 
         let pipeline = CompilerPipeline::new();
-        let result = pipeline.lower(vec![femur, tibia], vec![], vec![muscle], vec![synapse], vec![]);
-        
+        let result = pipeline.lower(
+            vec![femur, tibia],
+            vec![],
+            vec![muscle],
+            vec![synapse],
+            vec![],
+        );
+
         assert!(result.is_ok());
     }
 
@@ -121,10 +136,13 @@ mod tests {
         let mass = Mass::new(1.0).unwrap();
         let bone1 = Bone::new("Femur".to_string(), mass.clone());
         let bone2 = Bone::new("Femur".to_string(), mass);
-        
+
         let bones = vec![bone1, bone2];
         let result = BiologicalValidator::validate_bones(&bones);
-        
-        assert_eq!(result, Err(ValidationError::DuplicateIdentifier("Femur".to_string())));
+
+        assert_eq!(
+            result,
+            Err(ValidationError::DuplicateIdentifier("Femur".to_string()))
+        );
     }
 }

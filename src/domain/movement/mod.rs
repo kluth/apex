@@ -11,7 +11,7 @@ mod tests {
         // Red Phase: Ensure CPG outputs an oscillatory signal.
         let frequency = 1.0; // 1 Hz
         let mut cpg = Cpg::new(frequency);
-        
+
         // At t=0.25s (90 degrees / PI/2)
         // Since step takes dt, we call it with 0.25
         let signal_1 = cpg.step(0.25);
@@ -27,7 +27,7 @@ mod tests {
     fn test_cpg_phase_modulation() {
         let mut cpg = Cpg::new(1.0);
         let initial_phase = cpg.current_phase();
-        
+
         cpg.modulate_phase(PI / 2.0);
         assert!((cpg.current_phase() - initial_phase - PI / 2.0).abs() < 1e-6);
     }

@@ -1,5 +1,5 @@
+use crate::application::compiler::parser::{ParseError, Parser};
 use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
-use crate::application::compiler::parser::{Parser, ParseError};
 use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
@@ -46,9 +46,10 @@ impl CompilerPipeline {
         // 1. Lex & Parse
         let mut parser = Parser::new(source);
         let ast = parser.parse_organism()?;
-        
+
         // 2. Validate & Lower
-        self.lower(ast.bones, ast.joints, ast.muscles, vec![], vec![]).map_err(Into::into)
+        self.lower(ast.bones, ast.joints, ast.muscles, vec![], vec![])
+            .map_err(Into::into)
     }
 
     /// Lowers a collection of AST components into an AIR Topology.

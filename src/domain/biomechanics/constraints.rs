@@ -33,13 +33,18 @@ impl DistanceConstraint {
 
 impl XpbdConstraint for DistanceConstraint {
     fn solve(&self, registry: &mut BodyRegistry, dt: f64, lambda: f64) -> f64 {
-        let (w1, w2) = (registry.inv_mass[self.body_a_idx], registry.inv_mass[self.body_b_idx]);
+        let (w1, w2) = (
+            registry.inv_mass[self.body_a_idx],
+            registry.inv_mass[self.body_b_idx],
+        );
         let dx = registry.pos_x[self.body_a_idx] - registry.pos_x[self.body_b_idx];
         let dy = registry.pos_y[self.body_a_idx] - registry.pos_y[self.body_b_idx];
         let dz = registry.pos_z[self.body_a_idx] - registry.pos_z[self.body_b_idx];
 
         let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-        if dist < 1e-9 { return lambda; }
+        if dist < 1e-9 {
+            return lambda;
+        }
 
         let nx = dx / dist;
         let ny = dy / dist;
@@ -49,9 +54,19 @@ impl XpbdConstraint for DistanceConstraint {
         let alpha_tilde = self.compliance / (dt * dt);
 
         let delta_lambda = (-c - alpha_tilde * lambda) / (w1 + w2 + alpha_tilde);
-        
-        registry.apply_correction(self.body_a_idx, nx * delta_lambda * w1, ny * delta_lambda * w1, nz * delta_lambda * w1);
-        registry.apply_correction(self.body_b_idx, -nx * delta_lambda * w2, -ny * delta_lambda * w2, -nz * delta_lambda * w2);
+
+        registry.apply_correction(
+            self.body_a_idx,
+            nx * delta_lambda * w1,
+            ny * delta_lambda * w1,
+            nz * delta_lambda * w1,
+        );
+        registry.apply_correction(
+            self.body_b_idx,
+            -nx * delta_lambda * w2,
+            -ny * delta_lambda * w2,
+            -nz * delta_lambda * w2,
+        );
 
         lambda + delta_lambda
     }
@@ -99,10 +114,10 @@ mod tests {
         let mut registry = BodyRegistry::new();
         registry.add_body(0.0, 0.0, 0.0, 1.0);
         registry.add_body(2.0, 0.0, 0.0, 1.0);
-        
+
         let constraint = DistanceConstraint::new(0, 1, 1.0, 0.0);
         let _new_lambda = constraint.solve(&mut registry, 1.0, 0.0);
-        
+
         assert!((registry.pos_x[0] - 0.5).abs() < 1e-6);
         assert!((registry.pos_x[1] - 1.5).abs() < 1e-6);
     }

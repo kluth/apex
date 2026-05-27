@@ -1,5 +1,5 @@
-use crate::domain::biomechanics::registry::BodyRegistry;
 use crate::domain::biomechanics::constraints::XpbdConstraint;
+use crate::domain::biomechanics::registry::BodyRegistry;
 
 /// An XPBD constraint that preserves the 3D volume of a tetrahedral segment.
 /// Each tetrahedron has 4 vertices (modelled as rigid body indices).

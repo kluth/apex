@@ -7,10 +7,6 @@ pub mod synapse;
 #[cfg(test)]
 mod tests {
     use super::bone::{Bone, Mass};
-    
-    
-    
-    
 
     #[test]
     fn test_bone_instantiation_invariant() {

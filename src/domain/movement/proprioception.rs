@@ -23,10 +23,10 @@ mod tests {
     fn test_proprioceptive_feedback_loop() {
         let mut cpg = Cpg::new(1.0);
         let initial_phase = cpg.current_phase();
-        
+
         // Simulate a muscle stretch (20% elongation)
         Proprioception::modulate_from_stretch(&mut cpg, 1.2, 1.0, PI);
-        
+
         // Expected phase shift = PI * (1.2 - 1.0) = 0.2 * PI
         let expected_phase = initial_phase + 0.2 * PI;
         assert!((cpg.current_phase() - expected_phase).abs() < 1e-6);

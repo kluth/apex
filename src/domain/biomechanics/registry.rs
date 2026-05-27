@@ -8,7 +8,7 @@ pub struct BodyRegistry {
     pub pos_x: Vec<f64>,
     pub pos_y: Vec<f64>,
     pub pos_z: Vec<f64>,
-    
+
     // Previous Position (for XPBD velocity update)
     pub prev_pos_x: Vec<f64>,
     pub prev_pos_y: Vec<f64>,
@@ -73,25 +73,75 @@ impl BodyRegistry {
             let offset = i * 4;
 
             // Load positions
-            let mut px = f64x4::new([self.pos_x[offset], self.pos_x[offset+1], self.pos_x[offset+2], self.pos_x[offset+3]]);
-            let mut py = f64x4::new([self.pos_y[offset], self.pos_y[offset+1], self.pos_y[offset+2], self.pos_y[offset+3]]);
-            let mut pz = f64x4::new([self.pos_z[offset], self.pos_z[offset+1], self.pos_z[offset+2], self.pos_z[offset+3]]);
+            let mut px = f64x4::new([
+                self.pos_x[offset],
+                self.pos_x[offset + 1],
+                self.pos_x[offset + 2],
+                self.pos_x[offset + 3],
+            ]);
+            let mut py = f64x4::new([
+                self.pos_y[offset],
+                self.pos_y[offset + 1],
+                self.pos_y[offset + 2],
+                self.pos_y[offset + 3],
+            ]);
+            let mut pz = f64x4::new([
+                self.pos_z[offset],
+                self.pos_z[offset + 1],
+                self.pos_z[offset + 2],
+                self.pos_z[offset + 3],
+            ]);
 
             // Save prev positions
-            self.prev_pos_x[offset..offset+4].copy_from_slice(&self.pos_x[offset..offset+4]);
-            self.prev_pos_y[offset..offset+4].copy_from_slice(&self.pos_y[offset..offset+4]);
-            self.prev_pos_z[offset..offset+4].copy_from_slice(&self.pos_z[offset..offset+4]);
+            self.prev_pos_x[offset..offset + 4].copy_from_slice(&self.pos_x[offset..offset + 4]);
+            self.prev_pos_y[offset..offset + 4].copy_from_slice(&self.pos_y[offset..offset + 4]);
+            self.prev_pos_z[offset..offset + 4].copy_from_slice(&self.pos_z[offset..offset + 4]);
 
             // Load velocities
-            let vx = f64x4::new([self.vel_x[offset], self.vel_x[offset+1], self.vel_x[offset+2], self.vel_x[offset+3]]);
-            let vy = f64x4::new([self.vel_y[offset], self.vel_y[offset+1], self.vel_y[offset+2], self.vel_y[offset+3]]);
-            let vz = f64x4::new([self.vel_z[offset], self.vel_z[offset+1], self.vel_z[offset+2], self.vel_z[offset+3]]);
+            let vx = f64x4::new([
+                self.vel_x[offset],
+                self.vel_x[offset + 1],
+                self.vel_x[offset + 2],
+                self.vel_x[offset + 3],
+            ]);
+            let vy = f64x4::new([
+                self.vel_y[offset],
+                self.vel_y[offset + 1],
+                self.vel_y[offset + 2],
+                self.vel_y[offset + 3],
+            ]);
+            let vz = f64x4::new([
+                self.vel_z[offset],
+                self.vel_z[offset + 1],
+                self.vel_z[offset + 2],
+                self.vel_z[offset + 3],
+            ]);
 
             // Load forces and inverse mass
-            let fx = f64x4::new([self.force_x[offset], self.force_x[offset+1], self.force_x[offset+2], self.force_x[offset+3]]);
-            let fy = f64x4::new([self.force_y[offset], self.force_y[offset+1], self.force_y[offset+2], self.force_y[offset+3]]);
-            let fz = f64x4::new([self.force_z[offset], self.force_z[offset+1], self.force_z[offset+2], self.force_z[offset+3]]);
-            let im = f64x4::new([self.inv_mass[offset], self.inv_mass[offset+1], self.inv_mass[offset+2], self.inv_mass[offset+3]]);
+            let fx = f64x4::new([
+                self.force_x[offset],
+                self.force_x[offset + 1],
+                self.force_x[offset + 2],
+                self.force_x[offset + 3],
+            ]);
+            let fy = f64x4::new([
+                self.force_y[offset],
+                self.force_y[offset + 1],
+                self.force_y[offset + 2],
+                self.force_y[offset + 3],
+            ]);
+            let fz = f64x4::new([
+                self.force_z[offset],
+                self.force_z[offset + 1],
+                self.force_z[offset + 2],
+                self.force_z[offset + 3],
+            ]);
+            let im = f64x4::new([
+                self.inv_mass[offset],
+                self.inv_mass[offset + 1],
+                self.inv_mass[offset + 2],
+                self.inv_mass[offset + 3],
+            ]);
 
             // Calculate acceleration (f * w + g)
             let ax = fx * im;
@@ -107,10 +157,10 @@ impl BodyRegistry {
             let rx: [f64; 4] = px.into();
             let ry: [f64; 4] = py.into();
             let rz: [f64; 4] = pz.into();
-            
-            self.pos_x[offset..offset+4].copy_from_slice(&rx);
-            self.pos_y[offset..offset+4].copy_from_slice(&ry);
-            self.pos_z[offset..offset+4].copy_from_slice(&rz);
+
+            self.pos_x[offset..offset + 4].copy_from_slice(&rx);
+            self.pos_y[offset..offset + 4].copy_from_slice(&ry);
+            self.pos_z[offset..offset + 4].copy_from_slice(&rz);
         }
 
         // Handle remainder
@@ -156,7 +206,7 @@ mod tests {
     fn test_registry_soa_layout() {
         let mut registry = BodyRegistry::new();
         let idx = registry.add_body(1.0, 2.0, 3.0, 10.0);
-        
+
         assert_eq!(idx, 0);
         assert_eq!(registry.pos_x[0], 1.0);
         assert_eq!(registry.pos_y[0], 2.0);

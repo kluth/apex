@@ -1,6 +1,6 @@
 use super::lexer::{Lexer, Token};
 use crate::domain::ast::bone::{Bone, Mass};
-use crate::domain::ast::joint::{Joint, JointType, JointAttachment};
+use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
 use crate::domain::ast::muscle::Muscle;
 use std::collections::HashMap;
 
@@ -28,7 +28,10 @@ impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer::new(input);
         let current_token = lexer.next_token();
-        Self { lexer, current_token }
+        Self {
+            lexer,
+            current_token,
+        }
     }
 
     fn advance(&mut self) {
@@ -49,16 +52,19 @@ impl<'a> Parser<'a> {
 
     pub fn parse_organism(&mut self) -> Result<OrganismAst, ParseError> {
         self.expect(Token::Organism)?;
-        
+
         let name = if let Token::Identifier(n) = &self.current_token {
             n.clone()
         } else {
-            return Err(ParseError::UnexpectedToken(self.current_token.clone(), "Expected organism name".to_string()));
+            return Err(ParseError::UnexpectedToken(
+                self.current_token.clone(),
+                "Expected organism name".to_string(),
+            ));
         };
         self.advance();
 
         self.expect(Token::BraceOpen)?;
-        
+
         let mut bones = Vec::new();
         let mut joints = Vec::new();
         let mut muscles = Vec::new();
@@ -84,7 +90,12 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(Token::BraceClose)?;
-        Ok(OrganismAst { name, bones, joints, muscles })
+        Ok(OrganismAst {
+            name,
+            bones,
+            joints,
+            muscles,
+        })
     }
 
     fn parse_bone(&mut self) -> Result<Bone, ParseError> {
@@ -104,10 +115,16 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.expect(Token::Kg)?;
                         self.expect(Token::Semicolon)?;
-                        mass = Some(Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?);
+                        mass = Some(
+                            Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?,
+                        );
                     }
-                } else { self.advance(); }
-            } else { self.advance(); }
+                } else {
+                    self.advance();
+                }
+            } else {
+                self.advance();
+            }
         }
         self.expect(Token::BraceClose)?;
 
@@ -143,7 +160,9 @@ impl<'a> Parser<'a> {
                     }
                     _ => self.advance(),
                 }
-            } else { self.advance(); }
+            } else {
+                self.advance();
+            }
         }
         self.expect(Token::BraceClose)?;
 
@@ -153,8 +172,15 @@ impl<'a> Parser<'a> {
         let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
         let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
-        Joint::new(id, JointType::Spherical, b1, b2, JointAttachment::default(), JointAttachment::default())
-            .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
+        Joint::new(
+            id,
+            JointType::Spherical,
+            b1,
+            b2,
+            JointAttachment::default(),
+            JointAttachment::default(),
+        )
+        .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
     }
 
     fn parse_muscle(&mut self, bones: &HashMap<String, Bone>) -> Result<Muscle, ParseError> {
@@ -196,7 +222,9 @@ impl<'a> Parser<'a> {
                     }
                     _ => self.advance(),
                 }
-            } else { self.advance(); }
+            } else {
+                self.advance();
+            }
         }
         self.expect(Token::BraceClose)?;
 
@@ -206,14 +234,24 @@ impl<'a> Parser<'a> {
         let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
         let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
-        Ok(Muscle::new(id, b1, b2, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), max_force))
+        Ok(Muscle::new(
+            id,
+            b1,
+            b2,
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+            max_force,
+        ))
     }
 
     fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {
         if let Token::Identifier(n) = &self.current_token {
             Ok(n.clone())
         } else {
-            Err(ParseError::UnexpectedToken(self.current_token.clone(), msg.to_string()))
+            Err(ParseError::UnexpectedToken(
+                self.current_token.clone(),
+                msg.to_string(),
+            ))
         }
     }
 }
