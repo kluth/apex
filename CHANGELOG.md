@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Application (Compiler):** Implemented the `CompilerPipeline` and `BiologicalValidator`. Handles the lowering of high-level AST `Bone` objects into low-level AIR `Topology` with strict validation passes for biological invariants (Issue #8).
 - **Global Documentation:** Formalized Phase 0 Architecture Decision Records (ADRs 001-006) as tracked markdown artifacts inside `docs/ADRs/`.
 - **Domain (Biomechanics):** Implemented `domain::biomechanics::rigid_body` establishing the mathematical foundation for Extended Position Based Dynamics (XPBD). Handles static bodies natively via 0.0 inverse mass mapping (Issue #5).
 - **Global Documentation:** Initialized `README.md`, `CHANGELOG.md`, and in-repo `docs/WIKI.md` to track architectural terminology and progress.
