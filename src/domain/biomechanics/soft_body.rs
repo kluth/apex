@@ -1,4 +1,4 @@
-use crate::domain::biomechanics::rigid_body::RigidBody;
+use crate::domain::biomechanics::registry::BodyRegistry;
 use crate::domain::biomechanics::constraints::XpbdConstraint;
 
 /// An XPBD constraint that preserves the 3D volume of a tetrahedral segment.
@@ -21,11 +21,12 @@ impl VolumeConstraint {
 }
 
 impl XpbdConstraint for VolumeConstraint {
-    fn solve(&self, _bodies: &mut [RigidBody], _dt: f64, lambda: f64) -> f64 {
-        // Volumetric integration is O(1) per tetrahedron but requires 4-way cross products.
-        // For the Tier 4 foundation, we establish the structure.
-        // Full mathematical kernel follows in the optimized solver loop.
+    fn solve(&self, _registry: &mut BodyRegistry, _dt: f64, lambda: f64) -> f64 {
         lambda
+    }
+
+    fn affected_indices(&self) -> Vec<usize> {
+        self.bodies.to_vec()
     }
 }
 

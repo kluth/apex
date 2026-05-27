@@ -15,6 +15,7 @@ Foundational decisions regarding the APEX architecture are permanently recorded 
 11. [ADR-011: Time-Stepping and Substepping Strategy](./ADRs/ADR-011-Substepping-Strategy.md)
 12. [ADR-012: Compiler Architecture](./ADRs/ADR-012-Compiler-Architecture.md)
 13. [ADR-013: External Forces and Damping](./ADRs/ADR-013-Forces-and-Damping.md)
+14. [ADR-014: DOD Performance Architecture](./ADRs/ADR-014-DOD-Performance-Architecture.md)
 
 ## The Living Domain Lexicon (Ubiquitous Language)
 
@@ -38,6 +39,7 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 
 ### Domain: Biomechanics (XPBD & Myofascia & Integument)
 * **`RigidBody` (Entity):** The core physical solver entity. Isolates spatial arrays ($x$, $v$) from constraints to satisfy XPBD stability requirements.
+* **`BodyRegistry` (Aggregate):** An SOA (Structure-of-Arrays) container for all rigid body components, optimized for SIMD and cache locality.
 * **`HillCurve` (Domain Service):** Calculates the force output of a muscle based on its contractile and elastic properties.
 * **`MuscleJacobian` (Entity/Service):** Maps 1D muscle tension into 3D world-space forces applied to bones.
 * **`VolumeConstraint` (Entity):** An XPBD constraint that preserves the 3D volume of a tetrahedral segment of tissue.
@@ -46,6 +48,8 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`Solver` (Domain Service):** The XPBD engine responsible for enforcing physical constraints and calculating temporal state transitions.
 * **`Substick` (Temporal Unit):** A subdivision of the global time step used to maintain mathematical stability in stiff systems.
 * **`Damping` (Coefficient):** A factor representing internal or external friction, reducing velocity over time to prevent non-physical oscillation.
+* **`SOA` (Memory Layout):** Structure of Arrays. A data-oriented layout that stores components in separate contiguous arrays.
+* **`SIMD` (Optimization):** Single Instruction, Multiple Data. CPU feature enabling parallel processing of multiple data points in a single clock cycle.
 * **`inverse_mass` (Property):** Stored implicitly. A value of `0.0` mathematically translates to infinite stiffness (a static unmovable object), allowing alien/mythic materials without solver explosions.
 
 * **`XpbdConstraint` (Trait):** The mathematical contract for all physical constraints. Implements the total Lagrange multiplier update rule.

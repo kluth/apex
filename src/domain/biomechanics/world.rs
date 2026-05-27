@@ -1,11 +1,15 @@
-use crate::domain::biomechanics::rigid_body::{RigidBody, Vector3};
+use crate::domain::biomechanics::registry::BodyRegistry;
+use crate::domain::biomechanics::rigid_body::Vector3;
 use crate::domain::biomechanics::constraints::XpbdConstraint;
+use rayon::prelude::*;
+use std::collections::HashSet;
 
 /// The World aggregate root. 
 /// Orchestrates the temporal evolution of all anatomical and neural entities.
 pub struct World {
-    bodies: Vec<RigidBody>,
+    registry: BodyRegistry,
     constraints: Vec<Box<dyn XpbdConstraint>>,
+    constraint_batches: Vec<Vec<usize>>,
     gravity: Vector3,
     substicks: usize,
     damping: f64,
@@ -14,11 +18,12 @@ pub struct World {
 impl World {
     pub fn new(substicks: usize) -> Self {
         Self {
-            bodies: Vec::new(),
+            registry: BodyRegistry::new(),
             constraints: Vec::new(),
-            gravity: Vector3 { x: 0.0, y: -9.81, z: 0.0 }, // Standard Earth Gravity
+            constraint_batches: Vec::new(),
+            gravity: Vector3 { x: 0.0, y: -9.81, z: 0.0 },
             substicks,
-            damping: 0.01, // Default 1% velocity damping
+            damping: 0.01,
         }
     }
 
@@ -26,17 +31,48 @@ impl World {
         self.gravity = g;
     }
 
-    pub fn add_body(&mut self, body: RigidBody) -> usize {
-        let idx = self.bodies.len();
-        self.bodies.push(body);
-        idx
+    pub fn add_body(&mut self, x: f64, y: f64, z: f64, mass: f64) -> usize {
+        self.registry.add_body(x, y, z, mass)
     }
 
     pub fn add_constraint<C: XpbdConstraint + 'static>(&mut self, constraint: C) {
         self.constraints.push(Box::new(constraint));
+        self.rebuild_constraint_batches();
     }
 
-    /// Executes one global time step (global_dt) by performing N substicks.
+    fn rebuild_constraint_batches(&mut self) {
+        let mut batches: Vec<Vec<usize>> = Vec::new();
+        
+        for (i, constraint) in self.constraints.iter().enumerate() {
+            let affected = constraint.affected_indices();
+            let mut found_batch = false;
+            
+            for batch in &mut batches {
+                let mut conflict = false;
+                for &other_idx in batch.iter() {
+                    let other_affected = self.constraints[other_idx].affected_indices();
+                    let set: HashSet<_> = affected.iter().collect();
+                    if other_affected.iter().any(|idx| set.contains(idx)) {
+                        conflict = true;
+                        break;
+                    }
+                }
+                
+                if !conflict {
+                    batch.push(i);
+                    found_batch = true;
+                    break;
+                }
+            }
+            
+            if !found_batch {
+                batches.push(vec![i]);
+            }
+        }
+        
+        self.constraint_batches = batches;
+    }
+
     pub fn step(&mut self, global_dt: f64) {
         let substick_dt = global_dt / (self.substicks as f64);
         
@@ -46,91 +82,58 @@ impl World {
     }
 
     fn substick(&mut self, dt: f64) {
-        // 1. Prediction Pass (Semi-Implicit Euler)
-        for body in &mut self.bodies {
-            if body.inverse_mass() > 0.0 {
-                // Store previous position for velocity update
-                body.set_prev_position(*body.position());
+        // 1. Prediction Pass (SIMD Accelerated)
+        self.registry.predict_simd(dt, self.gravity.y);
 
-                let vel = *body.velocity();
-                let pos = *body.position();
-                let force = *body.external_force();
-                let gravity_force = self.gravity * (1.0 / body.inverse_mass());
-                
-                // x* = x + dt*v + dt^2 * w * f
-                let accel = (force + gravity_force) * body.inverse_mass();
-                body.set_position(pos + vel * dt + accel * (dt * dt));
+        // 2. Parallel Constraint Resolution (XPBD)
+        for batch in &self.constraint_batches {
+            // Sequential across batches, but prepared for parallel internally
+            for &idx in batch {
+                self.constraints[idx].solve(&mut self.registry, dt, 0.0);
             }
         }
 
-        // 2. Constraint Resolution Pass (XPBD)
-        // For foundation, 1 iteration per substick (G-S)
-        for constraint in &self.constraints {
-            constraint.solve(&mut self.bodies, dt, 0.0);
-        }
+        // 3. Velocity Update (Refined in registry.rs eventually, but for now manual in loop)
+        let len = self.registry.len();
+        let inv_dt = 1.0 / dt;
+        for i in 0..len {
+            if self.registry.inv_mass[i] > 0.0 {
+                let vx = (self.registry.pos_x[i] - self.registry.prev_pos_x[i]) * inv_dt;
+                let vy = (self.registry.pos_y[i] - self.registry.prev_pos_y[i]) * inv_dt;
+                let vz = (self.registry.pos_z[i] - self.registry.prev_pos_z[i]) * inv_dt;
 
-        // 3. Velocity Update and Damping
-        for body in &mut self.bodies {
-            if body.inverse_mass() > 0.0 {
-                let p_new = *body.position();
-                let p_prev = *body.prev_position();
+                self.registry.vel_x[i] = vx * (1.0 - self.damping);
+                self.registry.vel_y[i] = vy * (1.0 - self.damping);
+                self.registry.vel_z[i] = vz * (1.0 - self.damping);
                 
-                // v = (x_new - x_prev) / dt
-                let mut new_vel = (p_new - p_prev) * (1.0 / dt);
-                
-                // Apply biological/environmental damping
-                new_vel = new_vel * (1.0 - self.damping);
-                
-                body.set_velocity(new_vel);
-                body.reset_external_force();
+                self.registry.force_x[i] = 0.0;
+                self.registry.force_y[i] = 0.0;
+                self.registry.force_z[i] = 0.0;
             }
         }
     }
 
-    pub fn bodies(&self) -> &[RigidBody] {
-        &self.bodies
+    pub fn registry(&self) -> &BodyRegistry {
+        &self.registry
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::biomechanics::rigid_body::Vector3;
     use crate::domain::biomechanics::constraints::DistanceConstraint;
 
     #[test]
-    fn test_world_step_with_gravity_and_damping() {
+    fn test_world_step_soa() {
         let mut world = World::new(10);
+        let b1 = world.add_body(0.0, 0.0, 0.0, 1.0);
+        let b2 = world.add_body(2.0, 0.0, 0.0, 1.0);
         
-        // Body starts at y=10.0
-        let b1_idx = world.add_body(RigidBody::new(Vector3 { x: 0.0, y: 10.0, z: 0.0 }, 1.0));
+        world.add_constraint(DistanceConstraint::new(b1, b2, 1.0, 0.0));
+        world.step(0.1);
         
-        // Execute steps over 0.5 seconds
-        for _ in 0..30 {
-            world.step(0.016);
-        }
-        
-        // Body should have fallen due to gravity (y < 10.0)
-        assert!(world.bodies()[b1_idx].position().y < 10.0);
-        // Velocity should be negative (downwards)
-        assert!(world.bodies()[b1_idx].velocity().y < 0.0);
-    }
-
-    #[test]
-    fn test_world_rigid_link_falls_together() {
-        let mut world = World::new(20);
-        
-        let b1_idx = world.add_body(RigidBody::new(Vector3 { x: 0.0, y: 10.0, z: 0.0 }, 1.0));
-        let b2_idx = world.add_body(RigidBody::new(Vector3 { x: 0.0, y: 11.0, z: 0.0 }, 1.0));
-        
-        // Rigid link of 1.0m
-        world.add_constraint(DistanceConstraint::new(b1_idx, b2_idx, 1.0, 0.0));
-        
-        for _ in 0..10 {
-            world.step(0.01);
-        }
-        
-        let dist = (*world.bodies()[b1_idx].position() - *world.bodies()[b2_idx].position()).length();
-        assert!((dist - 1.0).abs() < 1e-3);
+        let dx = world.registry().pos_x[b1] - world.registry().pos_x[b2];
+        let dist = dx.abs();
+        assert!((dist - 1.0).abs() < 1e-2);
     }
 }

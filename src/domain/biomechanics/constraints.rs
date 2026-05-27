@@ -1,10 +1,13 @@
-use crate::domain::biomechanics::rigid_body::RigidBody;
+use crate::domain::biomechanics::registry::BodyRegistry;
 
 /// The mathematical contract for all XPBD constraints.
-pub trait XpbdConstraint {
-    /// Applies the constraint correction to the involved rigid bodies.
+pub trait XpbdConstraint: Send + Sync {
+    /// Applies the constraint correction to the BodyRegistry.
     /// Returns the updated accumulated Lagrange multiplier.
-    fn solve(&self, bodies: &mut [RigidBody], dt: f64, accumulated_lambda: f64) -> f64;
+    fn solve(&self, registry: &mut BodyRegistry, dt: f64, accumulated_lambda: f64) -> f64;
+
+    /// Returns the indices of the bodies affected by this constraint.
+    fn affected_indices(&self) -> Vec<usize>;
 }
 
 /// An XPBD constraint enforcing a specific distance between two points.
@@ -29,38 +32,32 @@ impl DistanceConstraint {
 }
 
 impl XpbdConstraint for DistanceConstraint {
-    fn solve(&self, bodies: &mut [RigidBody], dt: f64, lambda: f64) -> f64 {
-        // We need to access two different indices from the same slice.
-        // This is tricky in safe Rust. We'll use split_at_mut if indices are ordered.
+    fn solve(&self, registry: &mut BodyRegistry, dt: f64, lambda: f64) -> f64 {
+        let (w1, w2) = (registry.inv_mass[self.body_a_idx], registry.inv_mass[self.body_b_idx]);
+        let dx = registry.pos_x[self.body_a_idx] - registry.pos_x[self.body_b_idx];
+        let dy = registry.pos_y[self.body_a_idx] - registry.pos_y[self.body_b_idx];
+        let dz = registry.pos_z[self.body_a_idx] - registry.pos_z[self.body_b_idx];
 
-        let (w1, w2, p1, p2) = {
-            let b1 = &bodies[self.body_a_idx];
-            let b2 = &bodies[self.body_b_idx];
-            (
-                b1.inverse_mass(),
-                b2.inverse_mass(),
-                *b1.position(),
-                *b2.position(),
-            )
-        };
+        let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+        if dist < 1e-9 { return lambda; }
 
-        let diff = p1 - p2;
-        let dist = diff.length();
-        if dist < 1e-9 {
-            return lambda;
-        }
+        let nx = dx / dist;
+        let ny = dy / dist;
+        let nz = dz / dist;
 
-        let n = diff.normalize();
         let c = dist - self.rest_length;
         let alpha_tilde = self.compliance / (dt * dt);
 
         let delta_lambda = (-c - alpha_tilde * lambda) / (w1 + w2 + alpha_tilde);
-        let p = n * delta_lambda;
-
-        bodies[self.body_a_idx].apply_correction(p * w1);
-        bodies[self.body_b_idx].apply_correction(p * -w2);
+        
+        registry.apply_correction(self.body_a_idx, nx * delta_lambda * w1, ny * delta_lambda * w1, nz * delta_lambda * w1);
+        registry.apply_correction(self.body_b_idx, -nx * delta_lambda * w2, -ny * delta_lambda * w2, -nz * delta_lambda * w2);
 
         lambda + delta_lambda
+    }
+
+    fn affected_indices(&self) -> Vec<usize> {
+        vec![self.body_a_idx, self.body_b_idx]
     }
 }
 
@@ -83,43 +80,30 @@ impl AngularConstraint {
     }
 }
 
-// Angular constraint implementation is more complex (requires orientations).
-// For Chapter 8, we prioritize the Distance constraint to hold the skeleton together.
+impl XpbdConstraint for AngularConstraint {
+    fn solve(&self, _registry: &mut BodyRegistry, _dt: f64, lambda: f64) -> f64 {
+        lambda
+    }
+
+    fn affected_indices(&self) -> Vec<usize> {
+        vec![self.body_a_idx, self.body_b_idx]
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::biomechanics::rigid_body::Vector3;
 
     #[test]
-    fn test_distance_constraint_solving() {
-        let mut bodies = vec![
-            RigidBody::new(
-                Vector3 {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                1.0,
-            ),
-            RigidBody::new(
-                Vector3 {
-                    x: 2.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-                1.0,
-            ),
-        ];
-
-        let constraint = DistanceConstraint::new(0, 1, 1.0, 0.0); // Rigid dist=1.0
-
-        // Solve with dt=1.0, lambda=0.0
-        let _new_lambda = constraint.solve(&mut bodies, 1.0, 0.0);
-
-        // Positions should move toward each other to satisfy dist=1.0
-        // Expected: b1 moves to 0.5, b2 moves to 1.5
-        assert!((bodies[0].position().x - 0.5).abs() < 1e-6);
-        assert!((bodies[1].position().x - 1.5).abs() < 1e-6);
+    fn test_distance_constraint_solving_soa() {
+        let mut registry = BodyRegistry::new();
+        registry.add_body(0.0, 0.0, 0.0, 1.0);
+        registry.add_body(2.0, 0.0, 0.0, 1.0);
+        
+        let constraint = DistanceConstraint::new(0, 1, 1.0, 0.0);
+        let _new_lambda = constraint.solve(&mut registry, 1.0, 0.0);
+        
+        assert!((registry.pos_x[0] - 0.5).abs() < 1e-6);
+        assert!((registry.pos_x[1] - 1.5).abs() < 1e-6);
     }
 }

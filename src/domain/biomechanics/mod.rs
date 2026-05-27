@@ -1,5 +1,6 @@
 pub mod constraints;
 pub mod muscle_model;
+pub mod registry;
 pub mod rigid_body;
 pub mod soft_body;
 pub mod world;
