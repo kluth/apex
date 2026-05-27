@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Movement):** Implemented Central Pattern Generators (CPGs) for rhythmic biological motion. Provides a deterministic periodic signal generator for muscle activation (Issue #10).
 - **Application (Compiler):** Implemented the `CompilerPipeline` and `BiologicalValidator`. Handles the lowering of high-level AST `Bone` objects into low-level AIR `Topology` with strict validation passes for biological invariants (Issue #8).
 - **Global Documentation:** Formalized Phase 0 Architecture Decision Records (ADRs 001-006) as tracked markdown artifacts inside `docs/ADRs/`.
 - **Domain (Biomechanics):** Implemented `domain::biomechanics::rigid_body` establishing the mathematical foundation for Extended Position Based Dynamics (XPBD). Handles static bodies natively via 0.0 inverse mass mapping (Issue #5).

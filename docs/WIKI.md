@@ -31,6 +31,9 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`CompilerPipeline` (Application Service):** Orchestrates the transformation of high-level AST domain objects into optimized AIR topology.
 * **`BiologicalValidator` (Domain Service):** Enforces biological plausibility (e.g., uniqueness of identifiers) during the compilation pass.
 
+### Domain: Movement
+* **`Cpg` (Value Object/Entity):** Central Pattern Generator. A periodic oscillator that drives biological rhythms (e.g., gait, heart rate) by outputting a rhythmic activation signal.
+
 ## Engineering Directives
 1. **Mutation & Iteration:** All structural iterations must happen inside `domain`. Visualizations are ejected via the Egress Port (`rkyv` lock-free ring buffers).
 2. **Technical Debt:** Any function violating a McCabe score of 10 must be refactored instantly. No PR will merge otherwise.

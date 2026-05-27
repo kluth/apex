@@ -13,3 +13,4 @@ APEX is a declarative, biological modeling and simulation operating system. Geom
 - **[Feature Implementation]**: `domain::biomechanics::rigid_body` constructed. Mathematical foundation for XPBD established. Solves infinite mass stiffness via `inverse_mass = 0.0`. TDD cycle passed. McCabe score `< 5`.
 - **[Global Documentation]**: Formalized Phase 0 Architecture Decision Records (ADRs 001-006) into explicit Markdown artifacts located at `docs/ADRs/`. Linked to WIKI and README.
 - **[Feature Implementation]**: `application::compiler::pipeline` and `validator` established. Implemented multi-pass compiler lowering (AST -> AIR) with strict biological validation. TDD cycle passed. McCabe score `< 5`.
+- **[Feature Implementation]**: `domain::movement::cpg` implemented. Central Pattern Generator oscillator created to drive rhythmic activation signals. TDD cycle passed. McCabe score `< 5`.
