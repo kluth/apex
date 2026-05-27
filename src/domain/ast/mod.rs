@@ -1,4 +1,5 @@
 pub mod bone;
+pub mod joint;
 
 #[cfg(test)]
 mod tests {

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Biomechanics):** Implemented XPBD Joint Constraints (`DistanceConstraint`). Enables the creation of stable skeletal kinematic chains with support for rigid and compliant connections (Issue #16).
 - **Infrastructure (Telemetry):** Integrated `tracing` and `tracing-subscriber` for centralized observability. Established the `prelude` standard library export for the APEX ecosystem (Issue #14).
 - **Domain (Evolution):** Implemented the `FitnessEvaluator` framework. Provides a decouple mechanism for measuring organism performance (e.g., `DistanceFitness`) to drive evolutionary optimization (Issue #12).
 - **Domain (Movement):** Implemented Central Pattern Generators (CPGs) for rhythmic biological motion. Provides a deterministic periodic signal generator for muscle activation (Issue #10).

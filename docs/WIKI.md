@@ -8,6 +8,7 @@ Foundational decisions regarding the APEX architecture are permanently recorded 
 4. [ADR-004: Memory Model and Concurrency](./ADRs/ADR-004-Memory-Model.md)
 5. [ADR-005: Determinism and Biological Timescales](./ADRs/ADR-005-Determinism.md)
 6. [ADR-006: Fantasy and Alien Boundary](./ADRs/ADR-006-Fantasy-Boundary.md)
+7. [ADR-007: Skeletal Joint Constraints](./ADRs/ADR-007-Skeletal-Joint-Constraints.md)
 
 ## The Living Domain Lexicon (Ubiquitous Language)
 
@@ -16,6 +17,9 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 ### Domain: Abstract Syntax Tree (AST)
 * **`Bone` (Aggregate Root):** A representation of a rigid physical body in the simulation context. It holds intrinsic properties (e.g., `Mass`).
 * **`Mass` (Value Object):** A strictly validated scalar representing weight in kilograms. Mathematically cannot be negative or NaN.
+* **`Joint` (Aggregate Root):** A kinematic connection between two `Bone` entities. It restricts degrees of freedom (DOF) to simulate anatomical joints.
+* **`JointType` (Value Object):** Specifies the mechanical behavior of a joint (e.g., `Spherical`, `Revolute`).
+* **`JointAttachment` (Value Object):** The local offset from a bone's center where a joint is anchored.
 
 ### Domain: Anatomy Intermediate Representation (AIR)
 * **`Topology` (Aggregate):** The memory-contiguous, data-oriented graph mapping the entire organism. It abstracts away pointer jumping.
@@ -26,6 +30,9 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 ### Domain: Biomechanics (XPBD)
 * **`RigidBody` (Entity):** The core physical solver entity. Isolates spatial arrays ($x$, $v$) from constraints to satisfy XPBD stability requirements.
 * **`inverse_mass` (Property):** Stored implicitly. A value of `0.0` mathematically translates to infinite stiffness (a static unmovable object), allowing alien/mythic materials without solver explosions.
+* **`XpbdConstraint` (Trait):** The mathematical contract for all physical constraints. Implements the total Lagrange multiplier update rule.
+* **`DistanceConstraint` (Entity):** An XPBD constraint enforcing a specific distance (or 0-distance) between two points. Used for Spherical Joints.
+* **`AngularConstraint` (Entity):** An XPBD constraint restricting rotation around one or more axes. Used for Revolute Joints.
 
 ### Application: Compiler Pipeline
 * **`CompilerPipeline` (Application Service):** Orchestrates the transformation of high-level AST domain objects into optimized AIR topology.

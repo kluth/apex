@@ -1,4 +1,5 @@
 pub mod rigid_body;
+pub mod constraints;
 
 #[cfg(test)]
 mod tests {
