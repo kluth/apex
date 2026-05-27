@@ -81,7 +81,9 @@ impl Vector3 {
 #[derive(Debug, Clone)]
 pub struct RigidBody {
     position: Vector3,
+    prev_position: Vector3,
     velocity: Vector3,
+    external_force: Vector3,
     inverse_mass: f64,
 }
 
@@ -93,7 +95,9 @@ impl RigidBody {
 
         Self {
             position,
+            prev_position: position,
             velocity: Vector3::default(),
+            external_force: Vector3::default(),
             inverse_mass,
         }
     }
@@ -106,8 +110,32 @@ impl RigidBody {
         self.position = pos;
     }
 
+    pub fn prev_position(&self) -> &Vector3 {
+        &self.prev_position
+    }
+
+    pub fn set_prev_position(&mut self, pos: Vector3) {
+        self.prev_position = pos;
+    }
+
     pub fn velocity(&self) -> &Vector3 {
         &self.velocity
+    }
+
+    pub fn set_velocity(&mut self, vel: Vector3) {
+        self.velocity = vel;
+    }
+
+    pub fn external_force(&self) -> &Vector3 {
+        &self.external_force
+    }
+
+    pub fn add_external_force(&mut self, force: Vector3) {
+        self.external_force += force;
+    }
+
+    pub fn reset_external_force(&mut self) {
+        self.external_force = Vector3::default();
     }
 
     pub fn inverse_mass(&self) -> f64 {

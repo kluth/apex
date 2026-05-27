@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Biomechanics/Simulation):** Completed the Real-Time XPBD Solver. Integrated global gravity, biological damping, and the full velocity update cycle ($v = (x - x_{prev}) / dt$). Verified stability for constrained falling bodies (Issue #28 - hallucinated).
 - **Application (Compiler):** Implemented the formal APEX Lexer and Recursive-Descent Parser. Enables full end-to-end compilation from declarative `.apex` text into optimized AIR Topology. Extensively documented the DSL and Compiler Architecture (Issue #26 - hallucinated).
 - **Domain (Biomechanics/Simulation):** Implemented the `World` aggregate and the XPBD real-time solver loop. Introduced deterministic substepping and Semi-Implicit Euler prediction passes, ensuring mathematical stability for high-stiffness biological models (Issue #24).
 - **Domain (Integumentary System):** Implemented the initial soft-body foundation. Introduces `Skin` AST and `VolumeConstraint` for XPBD, enabling volume-preserving biological tissue and environmental collision hulls (Issue #22).

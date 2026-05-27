@@ -14,6 +14,7 @@ Foundational decisions regarding the APEX architecture are permanently recorded 
 10. [ADR-010: Soft-Body Integument and Collision](./ADRs/ADR-010-Soft-Body-Integument.md)
 11. [ADR-011: Time-Stepping and Substepping Strategy](./ADRs/ADR-011-Substepping-Strategy.md)
 12. [ADR-012: Compiler Architecture](./ADRs/ADR-012-Compiler-Architecture.md)
+13. [ADR-013: External Forces and Damping](./ADRs/ADR-013-Forces-and-Damping.md)
 
 ## The Living Domain Lexicon (Ubiquitous Language)
 
@@ -44,6 +45,7 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`World` (Aggregate Root):** The top-level simulation container. Orchestrates the temporal evolution of all anatomical and neural entities.
 * **`Solver` (Domain Service):** The XPBD engine responsible for enforcing physical constraints and calculating temporal state transitions.
 * **`Substick` (Temporal Unit):** A subdivision of the global time step used to maintain mathematical stability in stiff systems.
+* **`Damping` (Coefficient):** A factor representing internal or external friction, reducing velocity over time to prevent non-physical oscillation.
 * **`inverse_mass` (Property):** Stored implicitly. A value of `0.0` mathematically translates to infinite stiffness (a static unmovable object), allowing alien/mythic materials without solver explosions.
 
 * **`XpbdConstraint` (Trait):** The mathematical contract for all physical constraints. Implements the total Lagrange multiplier update rule.
