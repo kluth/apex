@@ -1,5 +1,14 @@
 # APEX Knowledge Base & Wiki
 
+## Architecture Decision Records (ADRs)
+Foundational decisions regarding the APEX architecture are permanently recorded here:
+1. [ADR-001: Technology Stack](./ADRs/ADR-001-Technology-Stack.md)
+2. [ADR-002: Type System Paradigm](./ADRs/ADR-002-Type-System-Paradigm.md)
+3. [ADR-003: Unit System](./ADRs/ADR-003-Unit-System.md)
+4. [ADR-004: Memory Model and Concurrency](./ADRs/ADR-004-Memory-Model.md)
+5. [ADR-005: Determinism and Biological Timescales](./ADRs/ADR-005-Determinism.md)
+6. [ADR-006: Fantasy and Alien Boundary](./ADRs/ADR-006-Fantasy-Boundary.md)
+
 ## The Living Domain Lexicon (Ubiquitous Language)
 
 This glossary defines the explicit terms used within the APEX source code. To maintain the **Screaming Architecture**, these terms must map 1:1 to structs, interfaces, and modules within the system.

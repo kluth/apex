@@ -15,3 +15,11 @@ APEX strictly adheres to **Hexagonal Architecture** and **Domain-Driven Design (
 - **[CHANGELOG](./CHANGELOG.md)**: Sequential version tracking.
 - **[WIKI](./docs/WIKI.md)**: The Living Domain Lexicon and architectural guidelines.
 - **[GEMINI AUDIT LEDGER](./GEMINI.md)**: Immutable chronological AI operational ledger.
+
+### Architecture Decision Records (ADRs)
+- [ADR-001: Technology Stack](./docs/ADRs/ADR-001-Technology-Stack.md)
+- [ADR-002: Type System Paradigm](./docs/ADRs/ADR-002-Type-System-Paradigm.md)
+- [ADR-003: Unit System](./docs/ADRs/ADR-003-Unit-System.md)
+- [ADR-004: Memory Model and Concurrency](./docs/ADRs/ADR-004-Memory-Model.md)
+- [ADR-005: Determinism and Biological Timescales](./docs/ADRs/ADR-005-Determinism.md)
+- [ADR-006: Fantasy and Alien Boundary](./docs/ADRs/ADR-006-Fantasy-Boundary.md)
