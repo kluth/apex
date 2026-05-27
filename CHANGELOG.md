@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Biomechanics/Simulation):** Implemented the `World` aggregate and the XPBD real-time solver loop. Introduced deterministic substepping and Semi-Implicit Euler prediction passes, ensuring mathematical stability for high-stiffness biological models (Issue #24).
 - **Domain (Integumentary System):** Implemented the initial soft-body foundation. Introduces `Skin` AST and `VolumeConstraint` for XPBD, enabling volume-preserving biological tissue and environmental collision hulls (Issue #22).
 - **Domain (Movement/Nervous System):** Implemented Synaptic wiring and Proprioceptive feedback. Enables the connection of CPG signals to muscles and reactive neural modulation based on physical stretch (Issue #20).
 - **Domain (Biomechanics):** Implemented XPBD Joint Constraints (`DistanceConstraint`). Enables the creation of stable skeletal kinematic chains with support for rigid and compliant connections (Issue #16).
