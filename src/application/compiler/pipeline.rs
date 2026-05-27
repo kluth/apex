@@ -1,7 +1,7 @@
+use super::validator::{BiologicalValidator, ValidationError};
+use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
-use crate::domain::air::topology::{Topology, NodeId};
-use super::validator::{BiologicalValidator, ValidationError};
 use std::collections::HashMap;
 
 /// Application Service responsible for lowering AST to AIR.
@@ -35,8 +35,12 @@ impl CompilerPipeline {
         }
 
         for joint in joints {
-            let source_id = bone_map.get(joint.source_bone_id()).expect("Source bone must exist");
-            let target_id = bone_map.get(joint.target_bone_id()).expect("Target bone must exist");
+            let source_id = bone_map
+                .get(joint.source_bone_id())
+                .expect("Source bone must exist");
+            let target_id = bone_map
+                .get(joint.target_bone_id())
+                .expect("Target bone must exist");
 
             topology.add_edge(*source_id, *target_id, joint.id().to_string());
         }

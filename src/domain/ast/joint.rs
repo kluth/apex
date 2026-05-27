@@ -24,7 +24,11 @@ pub struct JointAttachment {
 
 impl Default for JointAttachment {
     fn default() -> Self {
-        Self { offset_x: 0.0, offset_y: 0.0, offset_z: 0.0 }
+        Self {
+            offset_x: 0.0,
+            offset_y: 0.0,
+            offset_z: 0.0,
+        }
     }
 }
 
@@ -113,6 +117,9 @@ mod tests {
             JointAttachment::default(),
             JointAttachment::default(),
         );
-        assert_eq!(invalid_joint, Err(JointError::SelfConnection("Femur".to_string())));
+        assert_eq!(
+            invalid_joint,
+            Err(JointError::SelfConnection("Femur".to_string()))
+        );
     }
 }

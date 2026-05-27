@@ -22,7 +22,7 @@ impl FitnessEvaluator for DistanceFitness {
         let dx = current_state.x - self.start_position.x;
         let dy = current_state.y - self.start_position.y;
         let dz = current_state.z - self.start_position.z;
-        
+
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 }

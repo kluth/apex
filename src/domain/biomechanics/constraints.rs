@@ -32,16 +32,23 @@ impl XpbdConstraint for DistanceConstraint {
     fn solve(&self, bodies: &mut [RigidBody], dt: f64, lambda: f64) -> f64 {
         // We need to access two different indices from the same slice.
         // This is tricky in safe Rust. We'll use split_at_mut if indices are ordered.
-        
+
         let (w1, w2, p1, p2) = {
             let b1 = &bodies[self.body_a_idx];
             let b2 = &bodies[self.body_b_idx];
-            (b1.inverse_mass(), b2.inverse_mass(), *b1.position(), *b2.position())
+            (
+                b1.inverse_mass(),
+                b2.inverse_mass(),
+                *b1.position(),
+                *b2.position(),
+            )
         };
 
         let diff = p1 - p2;
         let dist = diff.length();
-        if dist < 1e-9 { return lambda; }
+        if dist < 1e-9 {
+            return lambda;
+        }
 
         let n = diff.normalize();
         let c = dist - self.rest_length;
@@ -87,15 +94,29 @@ mod tests {
     #[test]
     fn test_distance_constraint_solving() {
         let mut bodies = vec![
-            RigidBody::new(Vector3 { x: 0.0, y: 0.0, z: 0.0 }, 1.0),
-            RigidBody::new(Vector3 { x: 2.0, y: 0.0, z: 0.0 }, 1.0),
+            RigidBody::new(
+                Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                1.0,
+            ),
+            RigidBody::new(
+                Vector3 {
+                    x: 2.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                1.0,
+            ),
         ];
-        
+
         let constraint = DistanceConstraint::new(0, 1, 1.0, 0.0); // Rigid dist=1.0
-        
+
         // Solve with dt=1.0, lambda=0.0
         let _new_lambda = constraint.solve(&mut bodies, 1.0, 0.0);
-        
+
         // Positions should move toward each other to satisfy dist=1.0
         // Expected: b1 moves to 0.5, b2 moves to 1.5
         assert!((bodies[0].position().x - 0.5).abs() < 1e-6);

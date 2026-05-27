@@ -8,7 +8,7 @@ pub fn init_telemetry() {
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(tracing_subscriber::fmt::layer())
         .init();
-    
+
     tracing::info!("APEX Telemetry Initialized.");
 }
 

@@ -9,7 +9,7 @@ mod tests {
         // Red Phase: Ensure CPG outputs an oscillatory signal in the range [-1, 1].
         let frequency = 1.0; // 1 Hz
         let cpg = Cpg::new(frequency);
-        
+
         // Initial signal at t=0
         let signal_0 = cpg.step(0.0);
         assert_eq!(signal_0, 0.0);

@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub, Mul};
+use std::ops::{Add, AddAssign, Mul, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector3 {
@@ -9,14 +9,22 @@ pub struct Vector3 {
 
 impl Default for Vector3 {
     fn default() -> Self {
-        Self { x: 0.0, y: 0.0, z: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 }
 
 impl Add for Vector3 {
     type Output = Self;
     fn add(self, other: Self) -> Self {
-        Self { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
     }
 }
 
@@ -31,14 +39,22 @@ impl AddAssign for Vector3 {
 impl Sub for Vector3 {
     type Output = Self;
     fn sub(self, other: Self) -> Self {
-        Self { x: self.x - other.x, y: self.y - other.y, z: self.z - other.z }
+        Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+            z: self.z - other.z,
+        }
     }
 }
 
 impl Mul<f64> for Vector3 {
     type Output = Self;
     fn mul(self, scalar: f64) -> Self {
-        Self { x: self.x * scalar, y: self.y * scalar, z: self.z * scalar }
+        Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+            z: self.z * scalar,
+        }
     }
 }
 
@@ -50,7 +66,11 @@ impl Vector3 {
     pub fn normalize(&self) -> Self {
         let len = self.length();
         if len > 0.0 {
-            Self { x: self.x / len, y: self.y / len, z: self.z / len }
+            Self {
+                x: self.x / len,
+                y: self.y / len,
+                z: self.z / len,
+            }
         } else {
             *self
         }
@@ -66,11 +86,11 @@ pub struct RigidBody {
 }
 
 impl RigidBody {
-    /// Creates a new RigidBody. 
+    /// Creates a new RigidBody.
     /// If mass is 0.0, it is treated as an infinite mass (static body) where inverse_mass = 0.0.
     pub fn new(position: Vector3, mass: f64) -> Self {
         let inverse_mass = if mass > 0.0 { 1.0 / mass } else { 0.0 };
-        
+
         Self {
             position,
             velocity: Vector3::default(),
