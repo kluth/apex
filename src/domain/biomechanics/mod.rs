@@ -2,6 +2,7 @@ pub mod constraints;
 pub mod muscle_model;
 pub mod rigid_body;
 pub mod soft_body;
+pub mod world;
 
 #[cfg(test)]
 mod tests {
