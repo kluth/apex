@@ -3,6 +3,7 @@ use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::ast::synapse::Synapse;
 use std::collections::HashMap;
 
 /// Application Service responsible for lowering AST to AIR.
@@ -19,14 +20,14 @@ impl CompilerPipeline {
         Self
     }
 
-    /// Lowers a collection of AST Bones, Joints, and Muscles into an AIR Topology.
-    /// This is the primary 'compilation' pass for anatomical structure.
-    /// Returns an error if biological validation fails.
+    /// Lowers a collection of AST components into an AIR Topology.
+    /// This is the primary 'compilation' pass for anatomical and neural structure.
     pub fn lower(
         &self,
         bones: Vec<Bone>,
         joints: Vec<Joint>,
         muscles: Vec<Muscle>,
+        synapses: Vec<Synapse>,
     ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
         BiologicalValidator::validate_bones(&bones)?;
@@ -60,6 +61,13 @@ impl CompilerPipeline {
                 .expect("Target bone must exist");
 
             topology.add_edge(*source_id, *target_id, muscle.id().to_string());
+        }
+
+        for synapse in synapses {
+            // Synapses map to a different relationship layer, but for now
+            // we'll track them as logical metadata within the graph.
+            // In a future pass, AIR will support multiple relationship types.
+            tracing::debug!("Mapping Synapse: {}", synapse.id());
         }
 
         Ok(topology)

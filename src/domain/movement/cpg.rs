@@ -5,7 +5,7 @@ use std::f64::consts::PI;
 #[derive(Debug, Clone)]
 pub struct Cpg {
     frequency: f64, // Hz
-    phase_offset: f64,
+    phase: f64,     // Accumulated phase
 }
 
 impl Cpg {
@@ -13,17 +13,29 @@ impl Cpg {
     pub fn new(frequency: f64) -> Self {
         Self {
             frequency,
-            phase_offset: 0.0,
+            phase: 0.0,
         }
     }
 
     /// Advances the CPG state and returns the current signal value.
-    /// signal = sin(2 * PI * freq * time + phase_offset)
-    pub fn step(&self, time: f64) -> f64 {
-        (2.0 * PI * self.frequency * time + self.phase_offset).sin()
+    /// signal = sin(phase)
+    pub fn step(&mut self, dt: f64) -> f64 {
+        self.phase += 2.0 * PI * self.frequency * dt;
+        // Keep phase within [0, 2PI]
+        self.phase %= 2.0 * PI;
+        self.phase.sin()
+    }
+
+    /// Modulates the phase of the oscillator (Proprioceptive Feedback).
+    pub fn modulate_phase(&mut self, delta_phi: f64) {
+        self.phase += delta_phi;
     }
 
     pub fn frequency(&self) -> f64 {
         self.frequency
+    }
+
+    pub fn current_phase(&self) -> f64 {
+        self.phase
     }
 }

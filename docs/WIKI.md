@@ -21,6 +21,7 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`Joint` (Aggregate Root):** A kinematic connection between two `Bone` entities. It restricts degrees of freedom (DOF) to simulate anatomical joints.
 * **`Muscle` (Aggregate Root):** A biological actuator connecting two bones (Origin and Insertion). It converts neural activation into mechanical force.
 * **`MuscleAttachment` (Value Object):** Specifies the bone ID and local offset where a muscle is anchored.
+* **`Synapse` (Entity/Aggregate):** A neural connection that wires a `Cpg` to a `Muscle`. It scales the neural signal by a `Weight` to determine activation.
 
 ### Domain: Anatomy Intermediate Representation (AIR)
 * **`Topology` (Aggregate):** The memory-contiguous, data-oriented graph mapping the entire organism. It abstracts away pointer jumping.
@@ -55,3 +56,4 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 ## Engineering Directives
 1. **Mutation & Iteration:** All structural iterations must happen inside `domain`. Visualizations are ejected via the Egress Port (`rkyv` lock-free ring buffers).
 2. **Technical Debt:** Any function violating a McCabe score of 10 must be refactored instantly. No PR will merge otherwise.
+merge otherwise.

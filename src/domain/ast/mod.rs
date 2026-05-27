@@ -1,6 +1,7 @@
 pub mod bone;
 pub mod joint;
 pub mod muscle;
+pub mod synapse;
 
 #[cfg(test)]
 mod tests {
