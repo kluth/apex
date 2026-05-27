@@ -38,6 +38,10 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`FitnessEvaluator` (Trait/Port):** Defines the interface for evaluating organism performance.
 * **`DistanceFitness` (Domain Service):** A specific fitness metric measuring Euclidean displacement, used to optimize for locomotion efficiency.
 
+### Infrastructure: Telemetry
+* **`init_telemetry` (Ecosystem Standard):** Initializes the tracing and logging subscriber.
+* **`prelude` (Ecosystem Standard):** The unified entry point for the APEX standard library, re-exporting all core domain and application types.
+
 ## Engineering Directives
 1. **Mutation & Iteration:** All structural iterations must happen inside `domain`. Visualizations are ejected via the Egress Port (`rkyv` lock-free ring buffers).
 2. **Technical Debt:** Any function violating a McCabe score of 10 must be refactored instantly. No PR will merge otherwise.
