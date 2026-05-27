@@ -13,8 +13,10 @@ pub mod prelude {
     pub use crate::domain::ast::skin::{CollisionHull, CollisionPrimitive, Skin};
     pub use crate::domain::ast::synapse::Synapse;
     pub use crate::domain::biomechanics::muscle_model::HillCurve;
+    pub use crate::domain::biomechanics::registry::BodyRegistry;
     pub use crate::domain::biomechanics::rigid_body::{RigidBody, Vector3};
     pub use crate::domain::biomechanics::soft_body::VolumeConstraint;
+    pub use crate::domain::biomechanics::world::World;
     pub use crate::domain::evolution::fitness::{DistanceFitness, FitnessEvaluator};
     pub use crate::domain::movement::cpg::Cpg;
     pub use crate::domain::movement::proprioception::Proprioception;

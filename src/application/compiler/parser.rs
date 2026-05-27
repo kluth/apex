@@ -1,10 +1,22 @@
 use super::lexer::{Lexer, Token};
 use crate::domain::ast::bone::{Bone, Mass};
+use crate::domain::ast::joint::{Joint, JointType, JointAttachment};
+use crate::domain::ast::muscle::Muscle;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     UnexpectedToken(Token, String),
     InvalidMass(String),
+    MissingProperty(String),
+    BoneNotFound(String),
+}
+
+pub struct OrganismAst {
+    pub name: String,
+    pub bones: Vec<Bone>,
+    pub joints: Vec<Joint>,
+    pub muscles: Vec<Muscle>,
 }
 
 pub struct Parser<'a> {
@@ -35,9 +47,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses an organism block and returns a list of Bones.
-    /// organism Name { ... }
-    pub fn parse_organism(&mut self) -> Result<(String, Vec<Bone>), ParseError> {
+    pub fn parse_organism(&mut self) -> Result<OrganismAst, ParseError> {
         self.expect(Token::Organism)?;
         
         let name = if let Token::Identifier(n) = &self.current_token {
@@ -50,38 +60,44 @@ impl<'a> Parser<'a> {
         self.expect(Token::BraceOpen)?;
         
         let mut bones = Vec::new();
+        let mut joints = Vec::new();
+        let mut muscles = Vec::new();
+
+        // Temporary map to resolve bone references during parsing
+        let mut bone_registry: HashMap<String, Bone> = HashMap::new();
+
         while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
             match self.current_token {
                 Token::Bone => {
-                    bones.push(self.parse_bone()?);
+                    let bone = self.parse_bone()?;
+                    bone_registry.insert(bone.id().to_string(), bone.clone());
+                    bones.push(bone);
                 }
-                _ => self.advance(), // Skip other tokens for now (Joints, Muscles)
+                Token::Joint => {
+                    joints.push(self.parse_joint(&bone_registry)?);
+                }
+                Token::Muscle => {
+                    muscles.push(self.parse_muscle(&bone_registry)?);
+                }
+                _ => self.advance(),
             }
         }
 
         self.expect(Token::BraceClose)?;
-        Ok((name, bones))
+        Ok(OrganismAst { name, bones, joints, muscles })
     }
 
-    /// Parses a bone definition.
-    /// bone Name { mass = 1.0 kg; }
     fn parse_bone(&mut self) -> Result<Bone, ParseError> {
         self.expect(Token::Bone)?;
-
-        let id = if let Token::Identifier(n) = &self.current_token {
-            n.clone()
-        } else {
-            return Err(ParseError::UnexpectedToken(self.current_token.clone(), "Expected bone id".to_string()));
-        };
+        let id = self.read_identifier("Expected bone id")?;
         self.advance();
 
         self.expect(Token::BraceOpen)?;
-
         let mut mass = None;
 
         while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
-            match &self.current_token {
-                Token::Identifier(prop) if prop == "mass" => {
+            if let Token::Identifier(prop) = &self.current_token {
+                if prop == "mass" {
                     self.advance();
                     self.expect(Token::Equal)?;
                     if let Token::Number(val) = self.current_token {
@@ -90,15 +106,115 @@ impl<'a> Parser<'a> {
                         self.expect(Token::Semicolon)?;
                         mass = Some(Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?);
                     }
-                }
-                _ => self.advance(),
-            }
+                } else { self.advance(); }
+            } else { self.advance(); }
         }
-
         self.expect(Token::BraceClose)?;
 
-        let mass = mass.ok_or_else(|| ParseError::InvalidMass("Missing mass".to_string()))?;
+        let mass = mass.ok_or_else(|| ParseError::MissingProperty("mass".to_string()))?;
         Ok(Bone::new(id, mass))
+    }
+
+    fn parse_joint(&mut self, bones: &HashMap<String, Bone>) -> Result<Joint, ParseError> {
+        self.expect(Token::Joint)?;
+        let id = self.read_identifier("Expected joint id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut source = None;
+        let mut target = None;
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "source" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        source = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "target" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        target = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    _ => self.advance(),
+                }
+            } else { self.advance(); }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
+        let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
+
+        let b1 = bones.get(&s_id).ok_or_else(|| ParseError::BoneNotFound(s_id))?;
+        let b2 = bones.get(&t_id).ok_or_else(|| ParseError::BoneNotFound(t_id))?;
+
+        Joint::new(id, JointType::Spherical, b1, b2, JointAttachment::default(), JointAttachment::default())
+            .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
+    }
+
+    fn parse_muscle(&mut self, bones: &HashMap<String, Bone>) -> Result<Muscle, ParseError> {
+        self.expect(Token::Muscle)?;
+        let id = self.read_identifier("Expected muscle id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut source = None;
+        let mut target = None;
+        let mut max_force = 100.0;
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "source" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        source = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "target" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        target = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "max_force" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(val) = self.current_token {
+                            self.advance();
+                            self.expect(Token::Nm)?;
+                            self.expect(Token::Semicolon)?;
+                            max_force = val;
+                        }
+                    }
+                    _ => self.advance(),
+                }
+            } else { self.advance(); }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
+        let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
+
+        let b1 = bones.get(&s_id).ok_or_else(|| ParseError::BoneNotFound(s_id))?;
+        let b2 = bones.get(&t_id).ok_or_else(|| ParseError::BoneNotFound(t_id))?;
+
+        Ok(Muscle::new(id, b1, b2, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), max_force))
+    }
+
+    fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {
+        if let Token::Identifier(n) = &self.current_token {
+            Ok(n.clone())
+        } else {
+            Err(ParseError::UnexpectedToken(self.current_token.clone(), msg.to_string()))
+        }
     }
 }
 
@@ -107,14 +223,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parser_bone_definition() {
-        let input = "organism Biped { bone Femur { mass = 2.5 kg; } }";
+    fn test_parser_complex_organism() {
+        let input = "
+            organism Worm {
+                bone Head { mass = 1.0 kg; }
+                bone Tail { mass = 1.0 kg; }
+                joint Neck { source = Head; target = Tail; }
+                muscle Motor { source = Head; target = Tail; max_force = 50.0 Nm; }
+            }
+        ";
         let mut parser = Parser::new(input);
-        let (name, bones) = parser.parse_organism().unwrap();
+        let ast = parser.parse_organism().unwrap();
 
-        assert_eq!(name, "Biped");
-        assert_eq!(bones.len(), 1);
-        assert_eq!(bones[0].id(), "Femur");
-        assert_eq!(bones[0].mass().value(), 2.5);
+        assert_eq!(ast.name, "Worm");
+        assert_eq!(ast.bones.len(), 2);
+        assert_eq!(ast.joints.len(), 1);
+        assert_eq!(ast.muscles.len(), 1);
+        assert_eq!(ast.muscles[0].max_force(), 50.0);
     }
 }

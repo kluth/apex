@@ -45,10 +45,10 @@ impl CompilerPipeline {
     pub fn compile(&self, source: &str) -> Result<Topology, CompileError> {
         // 1. Lex & Parse
         let mut parser = Parser::new(source);
-        let (_name, bones) = parser.parse_organism()?;
+        let ast = parser.parse_organism()?;
         
         // 2. Validate & Lower
-        self.lower(bones, vec![], vec![], vec![], vec![]).map_err(Into::into)
+        self.lower(ast.bones, ast.joints, ast.muscles, vec![], vec![]).map_err(Into::into)
     }
 
     /// Lowers a collection of AST components into an AIR Topology.
