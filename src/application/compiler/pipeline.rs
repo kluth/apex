@@ -1,7 +1,8 @@
-use super::validator::{BiologicalValidator, ValidationError};
+use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
 use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
+use crate::domain::ast::muscle::Muscle;
 use std::collections::HashMap;
 
 /// Application Service responsible for lowering AST to AIR.
@@ -18,10 +19,15 @@ impl CompilerPipeline {
         Self
     }
 
-    /// Lowers a collection of AST Bones and Joints into an AIR Topology.
+    /// Lowers a collection of AST Bones, Joints, and Muscles into an AIR Topology.
     /// This is the primary 'compilation' pass for anatomical structure.
     /// Returns an error if biological validation fails.
-    pub fn lower(&self, bones: Vec<Bone>, joints: Vec<Joint>) -> Result<Topology, ValidationError> {
+    pub fn lower(
+        &self,
+        bones: Vec<Bone>,
+        joints: Vec<Joint>,
+        muscles: Vec<Muscle>,
+    ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
         BiologicalValidator::validate_bones(&bones)?;
 
@@ -43,6 +49,17 @@ impl CompilerPipeline {
                 .expect("Target bone must exist");
 
             topology.add_edge(*source_id, *target_id, joint.id().to_string());
+        }
+
+        for muscle in muscles {
+            let source_id = bone_map
+                .get(muscle.source_bone_id())
+                .expect("Source bone must exist");
+            let target_id = bone_map
+                .get(muscle.target_bone_id())
+                .expect("Target bone must exist");
+
+            topology.add_edge(*source_id, *target_id, muscle.id().to_string());
         }
 
         Ok(topology)

@@ -8,6 +8,9 @@ pub mod prelude {
     pub use crate::application::compiler::pipeline::CompilerPipeline;
     pub use crate::domain::air::topology::{EdgeId, NodeId, Topology};
     pub use crate::domain::ast::bone::{Bone, Mass};
+    pub use crate::domain::ast::joint::Joint;
+    pub use crate::domain::ast::muscle::Muscle;
+    pub use crate::domain::biomechanics::muscle_model::HillCurve;
     pub use crate::domain::biomechanics::rigid_body::{RigidBody, Vector3};
     pub use crate::domain::evolution::fitness::{DistanceFitness, FitnessEvaluator};
     pub use crate::domain::movement::cpg::Cpg;

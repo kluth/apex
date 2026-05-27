@@ -1,5 +1,6 @@
 pub mod constraints;
 pub mod rigid_body;
+pub mod muscle_model;
 
 #[cfg(test)]
 mod tests {
