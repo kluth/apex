@@ -1,1 +1,1 @@
-pub mod domain { pub mod ast; }
+pub mod domain;
