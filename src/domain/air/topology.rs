@@ -3,6 +3,10 @@
 pub struct NodeId(usize);
 
 impl NodeId {
+    pub fn new(index: usize) -> Self {
+        Self(index)
+    }
+
     pub fn index(&self) -> usize {
         self.0
     }
@@ -68,6 +72,14 @@ impl Topology {
 
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+
+    pub fn node_name(&self, id: NodeId) -> Option<&str> {
+        self.nodes.get(id.index()).map(|s| s.as_str())
+    }
+
+    pub fn edges(&self) -> &[Edge] {
+        &self.edges
     }
 
     pub fn add_edge(&mut self, source: NodeId, target: NodeId, name: String) -> EdgeId {
