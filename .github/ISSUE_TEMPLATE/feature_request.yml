@@ -1,0 +1,29 @@
+name: Feature Request
+description: Propose a new feature for the APEX ecosystem.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        All features must align with the APEX mission: "Geometry, physiology, and movement emerge exclusively from anatomical relationships."
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this feature needed?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Conceptual Proposal
+      description: Provide a high-level technical description.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Domain Impact
+      description: How does this affect the biological modeling or simulation logic?
+    validations:
+      required: true
