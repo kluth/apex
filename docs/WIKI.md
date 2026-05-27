@@ -34,6 +34,10 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 ### Domain: Movement
 * **`Cpg` (Value Object/Entity):** Central Pattern Generator. A periodic oscillator that drives biological rhythms (e.g., gait, heart rate) by outputting a rhythmic activation signal.
 
+### Domain: Evolution & AI Integration
+* **`FitnessEvaluator` (Trait/Port):** Defines the interface for evaluating organism performance.
+* **`DistanceFitness` (Domain Service):** A specific fitness metric measuring Euclidean displacement, used to optimize for locomotion efficiency.
+
 ## Engineering Directives
 1. **Mutation & Iteration:** All structural iterations must happen inside `domain`. Visualizations are ejected via the Egress Port (`rkyv` lock-free ring buffers).
 2. **Technical Debt:** Any function violating a McCabe score of 10 must be refactored instantly. No PR will merge otherwise.

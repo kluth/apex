@@ -14,3 +14,4 @@ APEX is a declarative, biological modeling and simulation operating system. Geom
 - **[Global Documentation]**: Formalized Phase 0 Architecture Decision Records (ADRs 001-006) into explicit Markdown artifacts located at `docs/ADRs/`. Linked to WIKI and README.
 - **[Feature Implementation]**: `application::compiler::pipeline` and `validator` established. Implemented multi-pass compiler lowering (AST -> AIR) with strict biological validation. TDD cycle passed. McCabe score `< 5`.
 - **[Feature Implementation]**: `domain::movement::cpg` implemented. Central Pattern Generator oscillator created to drive rhythmic activation signals. TDD cycle passed. McCabe score `< 5`.
+- **[Feature Implementation]**: `domain::evolution::fitness` framework established. Implemented `FitnessEvaluator` trait and `DistanceFitness` metric for performance-based optimization. Decouples simulation state from evolutionary metrics. TDD cycle passed. McCabe score `< 5`.
