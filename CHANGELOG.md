@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Movement/Nervous System):** Implemented Synaptic wiring and Proprioceptive feedback. Enables the connection of CPG signals to muscles and reactive neural modulation based on physical stretch (Issue #20).
 - **Domain (Biomechanics):** Implemented XPBD Joint Constraints (`DistanceConstraint`). Enables the creation of stable skeletal kinematic chains with support for rigid and compliant connections (Issue #16).
 - **Infrastructure (Telemetry):** Integrated `tracing` and `tracing-subscriber` for centralized observability. Established the `prelude` standard library export for the APEX ecosystem (Issue #14).
 - **Domain (Evolution):** Implemented the `FitnessEvaluator` framework. Provides a decouple mechanism for measuring organism performance (e.g., `DistanceFitness`) to drive evolutionary optimization (Issue #12).
