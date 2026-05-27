@@ -7,7 +7,11 @@ pub struct Vector3 {
 
 impl Default for Vector3 {
     fn default() -> Self {
-        Self { x: 0.0, y: 0.0, z: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 }
 
@@ -20,11 +24,11 @@ pub struct RigidBody {
 }
 
 impl RigidBody {
-    /// Creates a new RigidBody. 
+    /// Creates a new RigidBody.
     /// If mass is 0.0, it is treated as an infinite mass (static body) where inverse_mass = 0.0.
     pub fn new(position: Vector3, mass: f64) -> Self {
         let inverse_mass = if mass > 0.0 { 1.0 / mass } else { 0.0 };
-        
+
         Self {
             position,
             velocity: Vector3::default(),

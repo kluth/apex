@@ -3,18 +3,20 @@ pub mod validator;
 
 #[cfg(test)]
 mod tests {
-    use crate::domain::ast::bone::{Bone, Mass};
     use super::pipeline::CompilerPipeline;
     use super::validator::{BiologicalValidator, ValidationError};
+    use crate::domain::ast::bone::{Bone, Mass};
 
     #[test]
     fn test_compiler_lowering_bone_to_topology() {
         let mass = Mass::new(1.0).unwrap();
         let bone_ast = Bone::new("Humerus".to_string(), mass);
-        
+
         let pipeline = CompilerPipeline::new();
-        let topology = pipeline.lower(vec![bone_ast]).expect("Validation should pass");
-        
+        let topology = pipeline
+            .lower(vec![bone_ast])
+            .expect("Validation should pass");
+
         assert_eq!(topology.node_count(), 1);
     }
 
@@ -23,10 +25,13 @@ mod tests {
         let mass = Mass::new(1.0).unwrap();
         let bone1 = Bone::new("Femur".to_string(), mass.clone());
         let bone2 = Bone::new("Femur".to_string(), mass);
-        
+
         let bones = vec![bone1, bone2];
         let result = BiologicalValidator::validate_bones(&bones);
-        
-        assert_eq!(result, Err(ValidationError::DuplicateIdentifier("Femur".to_string())));
+
+        assert_eq!(
+            result,
+            Err(ValidationError::DuplicateIdentifier("Femur".to_string()))
+        );
     }
 }

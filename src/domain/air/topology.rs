@@ -72,7 +72,11 @@ impl Topology {
 
     pub fn add_edge(&mut self, source: NodeId, target: NodeId, name: String) -> EdgeId {
         let idx = self.edges.len();
-        let edge = Edge { source, target, name };
+        let edge = Edge {
+            source,
+            target,
+            name,
+        };
         self.edges.push(edge);
         EdgeId(idx)
     }

@@ -1,9 +1,15 @@
-use crate::domain::ast::bone::Bone;
-use crate::domain::air::topology::Topology;
 use super::validator::{BiologicalValidator, ValidationError};
+use crate::domain::air::topology::Topology;
+use crate::domain::ast::bone::Bone;
 
 /// Application Service responsible for lowering AST to AIR.
 pub struct CompilerPipeline;
+
+impl Default for CompilerPipeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CompilerPipeline {
     pub fn new() -> Self {
@@ -22,7 +28,7 @@ impl CompilerPipeline {
         for bone in bones {
             topology.add_node(bone.id().to_string());
         }
-        
+
         Ok(topology)
     }
 }
