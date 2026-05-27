@@ -10,3 +10,4 @@ APEX is a declarative, biological modeling and simulation operating system. Geom
 - **[GitHub Automation]**: Remote repository mapped. Initial tracked Issue created (#1). Pull request spawned and squashed into `main`. Clean linear history enforced via CLI automation.
 - **[Feature Implementation]**: `domain::air::topology` constructed. Arena-based memory layout (`Topology`) created for DOD compliance using `NodeId` and `EdgeId`. TDD cycle completed demonstrating $O(1)$ memory mapping and node-edge linkage. McCabe score `< 5`.
 - **[Global Documentation]**: `CHANGELOG.md`, `README.md`, and `docs/WIKI.md` established. Going forward, every discrete phase or chapter completion will seamlessly update the changelog and the wiki's Living Domain Lexicon.
+- **[Feature Implementation]**: `domain::biomechanics::rigid_body` constructed. Mathematical foundation for XPBD established. Solves infinite mass stiffness via `inverse_mass = 0.0`. TDD cycle passed. McCabe score `< 5`.
