@@ -2,7 +2,7 @@ pub mod topology;
 
 #[cfg(test)]
 mod tests {
-    use super::topology::{Topology, NodeId, EdgeId};
+    use super::topology::{Topology, EdgeId};
 
     #[test]
     fn test_air_topology_insertion_and_linkage() {
