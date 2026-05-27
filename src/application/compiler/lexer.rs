@@ -6,23 +6,23 @@ pub enum Token {
     Bone,
     Joint,
     Muscle,
-    
+
     // Identifiers and Literals
     Identifier(String),
     Number(f64),
-    
+
     // Units
     Kg,
     M,
     Nm,
     Rad,
-    
+
     // Delimiters
     BraceOpen,
     BraceClose,
     Equal,
     Semicolon,
-    
+
     // EOF
     Eof,
 }
@@ -50,7 +50,7 @@ impl<'a> Lexer<'a> {
             return self.read_identifier();
         }
 
-        if current_char.is_digit(10) || current_char == '.' {
+        if current_char.is_ascii_digit() || current_char == '.' {
             return self.read_number();
         }
 
@@ -74,7 +74,9 @@ impl<'a> Lexer<'a> {
                 self.pos += ch.len_utf8();
                 while self.pos < self.input.len() {
                     let ch_inner = self.input[self.pos..].chars().next().unwrap();
-                    if ch_inner == '\n' { break; }
+                    if ch_inner == '\n' {
+                        break;
+                    }
                     self.pos += ch_inner.len_utf8();
                 }
             } else {
@@ -112,7 +114,7 @@ impl<'a> Lexer<'a> {
         let start = self.pos;
         while self.pos < self.input.len() {
             let ch = self.input[self.pos..].chars().next().unwrap();
-            if ch.is_digit(10) || ch == '.' {
+            if ch.is_ascii_digit() || ch == '.' {
                 self.pos += ch.len_utf8();
             } else {
                 break;

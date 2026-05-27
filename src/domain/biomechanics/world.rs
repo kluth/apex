@@ -1,10 +1,9 @@
+use crate::domain::biomechanics::constraints::XpbdConstraint;
 use crate::domain::biomechanics::registry::BodyRegistry;
 use crate::domain::biomechanics::rigid_body::Vector3;
-use crate::domain::biomechanics::constraints::XpbdConstraint;
-use rayon::prelude::*;
 use std::collections::HashSet;
 
-/// The World aggregate root. 
+/// The World aggregate root.
 /// Orchestrates the temporal evolution of all anatomical and neural entities.
 pub struct World {
     registry: BodyRegistry,
@@ -21,7 +20,11 @@ impl World {
             registry: BodyRegistry::new(),
             constraints: Vec::new(),
             constraint_batches: Vec::new(),
-            gravity: Vector3 { x: 0.0, y: -9.81, z: 0.0 },
+            gravity: Vector3 {
+                x: 0.0,
+                y: -9.81,
+                z: 0.0,
+            },
             substicks,
             damping: 0.01,
         }
@@ -42,11 +45,11 @@ impl World {
 
     fn rebuild_constraint_batches(&mut self) {
         let mut batches: Vec<Vec<usize>> = Vec::new();
-        
+
         for (i, constraint) in self.constraints.iter().enumerate() {
             let affected = constraint.affected_indices();
             let mut found_batch = false;
-            
+
             for batch in &mut batches {
                 let mut conflict = false;
                 for &other_idx in batch.iter() {
@@ -57,25 +60,25 @@ impl World {
                         break;
                     }
                 }
-                
+
                 if !conflict {
                     batch.push(i);
                     found_batch = true;
                     break;
                 }
             }
-            
+
             if !found_batch {
                 batches.push(vec![i]);
             }
         }
-        
+
         self.constraint_batches = batches;
     }
 
     pub fn step(&mut self, global_dt: f64) {
         let substick_dt = global_dt / (self.substicks as f64);
-        
+
         for _ in 0..self.substicks {
             self.substick(substick_dt);
         }
@@ -105,7 +108,7 @@ impl World {
                 self.registry.vel_x[i] = vx * (1.0 - self.damping);
                 self.registry.vel_y[i] = vy * (1.0 - self.damping);
                 self.registry.vel_z[i] = vz * (1.0 - self.damping);
-                
+
                 self.registry.force_x[i] = 0.0;
                 self.registry.force_y[i] = 0.0;
                 self.registry.force_z[i] = 0.0;
@@ -128,10 +131,10 @@ mod tests {
         let mut world = World::new(10);
         let b1 = world.add_body(0.0, 0.0, 0.0, 1.0);
         let b2 = world.add_body(2.0, 0.0, 0.0, 1.0);
-        
+
         world.add_constraint(DistanceConstraint::new(b1, b2, 1.0, 0.0));
         world.step(0.1);
-        
+
         let dx = world.registry().pos_x[b1] - world.registry().pos_x[b2];
         let dist = dx.abs();
         assert!((dist - 1.0).abs() < 1e-2);

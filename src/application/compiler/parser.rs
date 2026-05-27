@@ -150,8 +150,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = bones.get(&s_id).ok_or_else(|| ParseError::BoneNotFound(s_id))?;
-        let b2 = bones.get(&t_id).ok_or_else(|| ParseError::BoneNotFound(t_id))?;
+        let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Joint::new(id, JointType::Spherical, b1, b2, JointAttachment::default(), JointAttachment::default())
             .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
@@ -203,8 +203,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = bones.get(&s_id).ok_or_else(|| ParseError::BoneNotFound(s_id))?;
-        let b2 = bones.get(&t_id).ok_or_else(|| ParseError::BoneNotFound(t_id))?;
+        let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Ok(Muscle::new(id, b1, b2, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), max_force))
     }

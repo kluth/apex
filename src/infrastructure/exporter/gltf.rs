@@ -1,13 +1,19 @@
-use crate::domain::air::topology::{Topology, NodeId};
+use crate::domain::air::topology::{NodeId, Topology};
 use gltf_json as json;
 use serde_json::to_vec;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::collections::HashSet;
 
 /// Infrastructure Adapter for exporting AIR Topology to GLTF 2.0.
 pub struct GltfExporter;
+
+impl Default for GltfExporter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl GltfExporter {
     pub fn new() -> Self {
@@ -15,7 +21,11 @@ impl GltfExporter {
     }
 
     /// Exports the provided Topology to a .glb file.
-    pub fn export_topology<P: AsRef<Path>>(&self, topology: &Topology, path: P) -> Result<(), String> {
+    pub fn export_topology<P: AsRef<Path>>(
+        &self,
+        topology: &Topology,
+        path: P,
+    ) -> Result<(), String> {
         let mut root = json::Root::default();
 
         // 1. Create Nodes
@@ -43,13 +53,17 @@ impl GltfExporter {
         for edge in topology.edges() {
             let parent_idx = edge.source().index();
             let child_idx = edge.target().index();
-            
+
             if parent_idx < nodes.len() && child_idx < nodes.len() {
                 let parent_node = &mut nodes[parent_idx];
                 if parent_node.children.is_none() {
                     parent_node.children = Some(Vec::new());
                 }
-                parent_node.children.as_mut().unwrap().push(json::Index::new(child_idx as u32));
+                parent_node
+                    .children
+                    .as_mut()
+                    .unwrap()
+                    .push(json::Index::new(child_idx as u32));
                 child_nodes.insert(child_idx);
             }
         }
@@ -76,16 +90,19 @@ impl GltfExporter {
 
         // 5. Package as GLB
         let mut file = File::create(path).map_err(|e| e.to_string())?;
-        file.write_all(b"glTF").map_err(|e| e.to_string())?; 
-        file.write_all(&2u32.to_le_bytes()).map_err(|e| e.to_string())?; 
-        
+        file.write_all(b"glTF").map_err(|e| e.to_string())?;
+        file.write_all(&2u32.to_le_bytes())
+            .map_err(|e| e.to_string())?;
+
         let json_len = json_data.len() as u32;
         let padding = (4 - (json_len % 4)) % 4;
         let padded_json_len = json_len + padding;
-        let total_len = 12 + 8 + padded_json_len; 
+        let total_len = 12 + 8 + padded_json_len;
 
-        file.write_all(&total_len.to_le_bytes()).map_err(|e| e.to_string())?;
-        file.write_all(&padded_json_len.to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&total_len.to_le_bytes())
+            .map_err(|e| e.to_string())?;
+        file.write_all(&padded_json_len.to_le_bytes())
+            .map_err(|e| e.to_string())?;
         file.write_all(b"JSON").map_err(|e| e.to_string())?;
         file.write_all(&json_data).map_err(|e| e.to_string())?;
         for _ in 0..padding {
@@ -106,13 +123,13 @@ mod tests {
     fn test_gltf_export_file_creation() {
         let mut topology = Topology::new();
         topology.add_node("Head".to_string());
-        
+
         let exporter = GltfExporter::new();
         let path = "test_export.glb";
         exporter.export_topology(&topology, path).unwrap();
-        
+
         assert!(Path::new(path).exists());
-        
+
         // Cleanup
         let _ = fs::remove_file(path);
     }
