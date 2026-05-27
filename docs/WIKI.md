@@ -11,9 +11,10 @@ Foundational decisions regarding the APEX architecture are permanently recorded 
 7. [ADR-007: Skeletal Joint Constraints](./ADRs/ADR-007-Skeletal-Joint-Constraints.md)
 8. [ADR-008: Muscle Model Jacobians](./ADRs/ADR-008-Muscle-Model-Jacobians.md)
 
-## The Living Domain Lexicon (Ubiquitous Language)
+9. [ADR-009: Synaptic Wiring and Proprioception](./ADRs/ADR-009-Synaptic-Wiring-Proprioception.md)
+10. [ADR-010: Soft-Body Integument and Collision](./ADRs/ADR-010-Soft-Body-Integument.md)
 
-This glossary defines the explicit terms used within the APEX source code. To maintain the **Screaming Architecture**, these terms must map 1:1 to structs, interfaces, and modules within the system.
+## The Living Domain Lexicon (Ubiquitous Language)
 
 ### Domain: Abstract Syntax Tree (AST)
 * **`Bone` (Aggregate Root):** A representation of a rigid physical body in the simulation context. It holds intrinsic properties (e.g., `Mass`).
@@ -22,6 +23,8 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`Muscle` (Aggregate Root):** A biological actuator connecting two bones (Origin and Insertion). It converts neural activation into mechanical force.
 * **`MuscleAttachment` (Value Object):** Specifies the bone ID and local offset where a muscle is anchored.
 * **`Synapse` (Entity/Aggregate):** A neural connection that wires a `Cpg` to a `Muscle`. It scales the neural signal by a `Weight` to determine activation.
+* **`Skin` (Entity/Aggregate):** The outer shell of the organism. Composed of soft-body volumetric segments attached to the skeleton.
+* **`CollisionHull` (Value Object):** A set of geometric primitives (spheres, boxes) used to calculate environmental interactions.
 
 ### Domain: Anatomy Intermediate Representation (AIR)
 * **`Topology` (Aggregate):** The memory-contiguous, data-oriented graph mapping the entire organism. It abstracts away pointer jumping.
@@ -29,11 +32,14 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 * **`EdgeId` (Value Object):** A type-safe array index representing an anatomical connection (like a `Joint`) in the Topology arena.
 * **`Edge` (Entity):** The structured relationship connecting a source `NodeId` to a target `NodeId`.
 
-### Domain: Biomechanics (XPBD & Myofascia)
+### Domain: Biomechanics (XPBD & Myofascia & Integument)
 * **`RigidBody` (Entity):** The core physical solver entity. Isolates spatial arrays ($x$, $v$) from constraints to satisfy XPBD stability requirements.
 * **`HillCurve` (Domain Service):** Calculates the force output of a muscle based on its contractile and elastic properties.
 * **`MuscleJacobian` (Entity/Service):** Maps 1D muscle tension into 3D world-space forces applied to bones.
+* **`VolumeConstraint` (Entity):** An XPBD constraint that preserves the 3D volume of a tetrahedral segment of tissue.
+* **`CollisionPrimitive` (Value Object):** Geometric shape used for ground contact detection.
 * **`inverse_mass` (Property):** Stored implicitly. A value of `0.0` mathematically translates to infinite stiffness (a static unmovable object), allowing alien/mythic materials without solver explosions.
+
 * **`XpbdConstraint` (Trait):** The mathematical contract for all physical constraints. Implements the total Lagrange multiplier update rule.
 * **`DistanceConstraint` (Entity):** An XPBD constraint enforcing a specific distance (or 0-distance) between two points. Used for Spherical Joints.
 * **`AngularConstraint` (Entity):** An XPBD constraint restricting rotation around one or more axes. Used for Revolute Joints.

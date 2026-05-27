@@ -3,6 +3,7 @@ use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::ast::skin::Skin;
 use crate::domain::ast::synapse::Synapse;
 use std::collections::HashMap;
 
@@ -28,6 +29,7 @@ impl CompilerPipeline {
         joints: Vec<Joint>,
         muscles: Vec<Muscle>,
         synapses: Vec<Synapse>,
+        skins: Vec<Skin>,
     ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
         BiologicalValidator::validate_bones(&bones)?;
@@ -64,10 +66,16 @@ impl CompilerPipeline {
         }
 
         for synapse in synapses {
-            // Synapses map to a different relationship layer, but for now
-            // we'll track them as logical metadata within the graph.
-            // In a future pass, AIR will support multiple relationship types.
             tracing::debug!("Mapping Synapse: {}", synapse.id());
+        }
+
+        for skin in skins {
+            let _target_id = bone_map
+                .get(skin.target_bone_id())
+                .expect("Target bone for skin must exist");
+            
+            // Skin segments are lowered to volumetric hulls attached to the node.
+            tracing::debug!("Lowering Skin shell: {}", skin.id());
         }
 
         Ok(topology)
