@@ -20,5 +20,6 @@ pub mod prelude {
     pub use crate::domain::evolution::fitness::{DistanceFitness, FitnessEvaluator};
     pub use crate::domain::movement::cpg::Cpg;
     pub use crate::domain::movement::proprioception::Proprioception;
+    pub use crate::infrastructure::exporter::gltf::GltfExporter;
     pub use crate::infrastructure::telemetry::{init_telemetry, shutdown_telemetry};
 }
