@@ -1,7 +1,7 @@
 use crate::domain::air::topology::{NodeId, Topology};
 use gltf_json as json;
 use serde_json::to_vec;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -28,10 +28,29 @@ impl GltfExporter {
     ) -> Result<(), String> {
         let mut root = json::Root::default();
 
-        // 1. Create Nodes
+        // 1. Map edges to identify parents
+        let mut parent_map = HashMap::new();
+        for edge in topology.edges() {
+            parent_map.insert(edge.target().index(), edge.source().index());
+        }
+
+        // 2. Create Nodes with Relative Positions
         let mut nodes = Vec::new();
         for i in 0..topology.node_count() {
-            let name = topology.node_name(NodeId::new(i)).map(|s| s.to_string());
+            let id = NodeId::new(i);
+            let name = topology.node_name(id).map(|s| s.to_string());
+            let abs_pos = topology.node_position(id).unwrap_or_default();
+
+            let translation = if let Some(&parent_idx) = parent_map.get(&i) {
+                let parent_pos = topology
+                    .node_position(NodeId::new(parent_idx))
+                    .unwrap_or_default();
+                let rel_pos = abs_pos - parent_pos;
+                [rel_pos.x as f32, rel_pos.y as f32, rel_pos.z as f32]
+            } else {
+                [abs_pos.x as f32, abs_pos.y as f32, abs_pos.z as f32]
+            };
+
             nodes.push(json::Node {
                 camera: None,
                 children: None,
@@ -42,13 +61,13 @@ impl GltfExporter {
                 name,
                 rotation: None,
                 scale: None,
-                translation: None,
+                translation: Some(translation),
                 skin: None,
                 weights: None,
             });
         }
 
-        // 2. Reconstruct Hierarchy from Edges
+        // 3. Reconstruct Hierarchy
         let mut child_nodes = HashSet::new();
         for edge in topology.edges() {
             let parent_idx = edge.source().index();
@@ -68,7 +87,7 @@ impl GltfExporter {
             }
         }
 
-        // 3. Create Scene with Root Nodes (nodes that are not children of any other node)
+        // 4. Create Scene with Root Nodes
         let mut root_nodes = Vec::new();
         for i in 0..nodes.len() {
             if !child_nodes.contains(&i) {
@@ -85,10 +104,8 @@ impl GltfExporter {
         root.scene = Some(scene_idx);
         root.nodes = nodes;
 
-        // 4. Serialize to JSON
+        // 5. Serialize and Package as GLB
         let json_data = to_vec(&root).map_err(|e| e.to_string())?;
-
-        // 5. Package as GLB
         let mut file = File::create(path).map_err(|e| e.to_string())?;
         file.write_all(b"glTF").map_err(|e| e.to_string())?;
         file.write_all(&2u32.to_le_bytes())
@@ -117,20 +134,19 @@ impl GltfExporter {
 mod tests {
     use super::*;
     use crate::domain::air::topology::Topology;
+    use crate::domain::biomechanics::rigid_body::Vector3;
     use std::fs;
 
     #[test]
     fn test_gltf_export_file_creation() {
         let mut topology = Topology::new();
-        topology.add_node("Head".to_string());
+        topology.add_node("Head".to_string(), Vector3::default());
 
         let exporter = GltfExporter::new();
         let path = "test_export.glb";
         exporter.export_topology(&topology, path).unwrap();
 
         assert!(Path::new(path).exists());
-
-        // Cleanup
         let _ = fs::remove_file(path);
     }
 }

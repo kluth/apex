@@ -1,3 +1,5 @@
+use crate::domain::biomechanics::rigid_body::Vector3;
+
 /// Represents an index within the Topology Arena for a Node (Bone).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NodeId(usize);
@@ -48,11 +50,16 @@ impl Edge {
     }
 }
 
+pub struct Node {
+    pub name: String,
+    pub position: Vector3,
+}
+
 /// The Anatomy Intermediate Representation topological graph.
 /// Uses an Arena-based memory layout for DOD compliance.
-#[derive(Debug, Clone, Default)]
+#[derive(Default)]
 pub struct Topology {
-    nodes: Vec<String>, // Placeholder for Bone references
+    nodes: Vec<Node>,
     edges: Vec<Edge>,
 }
 
@@ -64,9 +71,9 @@ impl Topology {
         }
     }
 
-    pub fn add_node(&mut self, data: String) -> NodeId {
+    pub fn add_node(&mut self, name: String, position: Vector3) -> NodeId {
         let idx = self.nodes.len();
-        self.nodes.push(data);
+        self.nodes.push(Node { name, position });
         NodeId(idx)
     }
 
@@ -75,7 +82,11 @@ impl Topology {
     }
 
     pub fn node_name(&self, id: NodeId) -> Option<&str> {
-        self.nodes.get(id.index()).map(|s| s.as_str())
+        self.nodes.get(id.index()).map(|n| n.name.as_str())
+    }
+
+    pub fn node_position(&self, id: NodeId) -> Option<Vector3> {
+        self.nodes.get(id.index()).map(|n| n.position)
     }
 
     pub fn edges(&self) -> &[Edge] {

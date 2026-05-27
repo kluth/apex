@@ -20,7 +20,10 @@ pub enum Token {
     // Delimiters
     BraceOpen,
     BraceClose,
+    ParenOpen,
+    ParenClose,
     Equal,
+    Comma,
     Semicolon,
 
     // EOF
@@ -58,7 +61,10 @@ impl<'a> Lexer<'a> {
         match current_char {
             '{' => Token::BraceOpen,
             '}' => Token::BraceClose,
+            '(' => Token::ParenOpen,
+            ')' => Token::ParenClose,
             '=' => Token::Equal,
+            ',' => Token::Comma,
             ';' => Token::Semicolon,
             _ => self.next_token(), // Skip unknown characters
         }

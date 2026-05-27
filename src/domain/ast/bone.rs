@@ -20,16 +20,19 @@ impl Mass {
     }
 }
 
+use crate::domain::biomechanics::rigid_body::Vector3;
+
 /// Aggregate Root representing a Rigid Body.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Bone {
     id: String,
     mass: Mass,
+    position: Vector3,
 }
 
 impl Bone {
-    pub fn new(id: String, mass: Mass) -> Self {
-        Self { id, mass }
+    pub fn new(id: String, mass: Mass, position: Vector3) -> Self {
+        Self { id, mass, position }
     }
 
     pub fn id(&self) -> &str {
@@ -38,5 +41,9 @@ impl Bone {
 
     pub fn mass(&self) -> &Mass {
         &self.mass
+    }
+
+    pub fn position(&self) -> Vector3 {
+        self.position
     }
 }

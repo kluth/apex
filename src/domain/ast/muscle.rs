@@ -83,12 +83,13 @@ impl Muscle {
 mod tests {
     use super::*;
     use crate::domain::ast::bone::{Bone, Mass};
+    use crate::domain::biomechanics::rigid_body::Vector3;
 
     #[test]
     fn test_muscle_instantiation() {
         let mass = Mass::new(1.0).unwrap();
-        let femur = Bone::new("Femur".to_string(), mass.clone());
-        let tibia = Bone::new("Tibia".to_string(), mass);
+        let femur = Bone::new("Femur".to_string(), mass.clone(), Vector3::default());
+        let tibia = Bone::new("Tibia".to_string(), mass, Vector3::default());
 
         let biceps_femoris = Muscle::new(
             "BicepsFemoris".to_string(),

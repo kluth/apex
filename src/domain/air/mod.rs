@@ -3,14 +3,15 @@ pub mod topology;
 #[cfg(test)]
 mod tests {
     use super::topology::{EdgeId, Topology};
+    use crate::domain::biomechanics::rigid_body::Vector3;
 
     #[test]
     fn test_air_topology_insertion_and_linkage() {
         // Red Phase: We expect to insert nodes and link them via edges.
         let mut topology = Topology::new();
 
-        let femur_id = topology.add_node("Femur".to_string());
-        let tibia_id = topology.add_node("Tibia".to_string());
+        let femur_id = topology.add_node("Femur".to_string(), Vector3::default());
+        let tibia_id = topology.add_node("Tibia".to_string(), Vector3::default());
 
         assert_eq!(femur_id.index(), 0);
         assert_eq!(tibia_id.index(), 1);

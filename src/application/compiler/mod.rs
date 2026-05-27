@@ -5,18 +5,20 @@ pub mod validator;
 
 #[cfg(test)]
 mod tests {
-    use super::pipeline::CompilerPipeline;
-    use super::validator::{BiologicalValidator, ValidationError};
+
+    use crate::application::compiler::pipeline::CompilerPipeline;
+    use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
     use crate::domain::ast::bone::{Bone, Mass};
     use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
     use crate::domain::ast::muscle::Muscle;
     use crate::domain::ast::skin::{CollisionHull, CollisionPrimitive, Skin};
     use crate::domain::ast::synapse::Synapse;
+    use crate::domain::biomechanics::rigid_body::Vector3;
     use crate::domain::movement::cpg::Cpg;
 
     #[test]
     fn test_full_compilation_from_text() {
-        let input = "organism Biped { bone Femur { mass = 2.0 kg; } }";
+        let input = "organism Biped { bone Femur { mass = 2.0 kg; position = (0, 1, 0); } }";
         let pipeline = CompilerPipeline::new();
         let topology = pipeline
             .compile(input)
@@ -28,7 +30,7 @@ mod tests {
     #[test]
     fn test_compiler_lowering_bone_to_topology() {
         let mass = Mass::new(1.0).unwrap();
-        let bone_ast = Bone::new("Humerus".to_string(), mass);
+        let bone_ast = Bone::new("Humerus".to_string(), mass, Vector3::default());
 
         let pipeline = CompilerPipeline::new();
         let topology = pipeline
@@ -41,8 +43,8 @@ mod tests {
     #[test]
     fn test_compiler_lowering_joint_to_topology() {
         let mass = Mass::new(1.0).unwrap();
-        let femur = Bone::new("Femur".to_string(), mass.clone());
-        let tibia = Bone::new("Tibia".to_string(), mass);
+        let femur = Bone::new("Femur".to_string(), mass.clone(), Vector3::default());
+        let tibia = Bone::new("Tibia".to_string(), mass, Vector3::default());
 
         let knee = Joint::new(
             "Knee".to_string(),
@@ -65,8 +67,8 @@ mod tests {
     #[test]
     fn test_compiler_lowering_muscle_to_topology() {
         let mass = Mass::new(1.0).unwrap();
-        let femur = Bone::new("Femur".to_string(), mass.clone());
-        let tibia = Bone::new("Tibia".to_string(), mass);
+        let femur = Bone::new("Femur".to_string(), mass.clone(), Vector3::default());
+        let tibia = Bone::new("Tibia".to_string(), mass, Vector3::default());
 
         let biceps = Muscle::new(
             "Biceps".to_string(),
@@ -88,7 +90,7 @@ mod tests {
     #[test]
     fn test_compiler_lowering_skin_to_topology() {
         let mass = Mass::new(1.0).unwrap();
-        let femur = Bone::new("Femur".to_string(), mass);
+        let femur = Bone::new("Femur".to_string(), mass, Vector3::default());
 
         let mut skin = Skin::new("Skin_Femur".to_string(), &femur);
         skin.add_hull(CollisionHull {
@@ -106,8 +108,8 @@ mod tests {
     #[test]
     fn test_compiler_lowering_synapse() {
         let mass = Mass::new(1.0).unwrap();
-        let femur = Bone::new("Femur".to_string(), mass.clone());
-        let tibia = Bone::new("Tibia".to_string(), mass);
+        let femur = Bone::new("Femur".to_string(), mass.clone(), Vector3::default());
+        let tibia = Bone::new("Tibia".to_string(), mass, Vector3::default());
         let muscle = Muscle::new(
             "Biceps".to_string(),
             &femur,
@@ -134,8 +136,8 @@ mod tests {
     #[test]
     fn test_biological_validation_duplicate_id() {
         let mass = Mass::new(1.0).unwrap();
-        let bone1 = Bone::new("Femur".to_string(), mass.clone());
-        let bone2 = Bone::new("Femur".to_string(), mass);
+        let bone1 = Bone::new("Femur".to_string(), mass.clone(), Vector3::default());
+        let bone2 = Bone::new("Femur".to_string(), mass, Vector3::default());
 
         let bones = vec![bone1, bone2];
         let result = BiologicalValidator::validate_bones(&bones);

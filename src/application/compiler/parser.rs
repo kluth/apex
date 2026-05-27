@@ -2,6 +2,7 @@ use super::lexer::{Lexer, Token};
 use crate::domain::ast::bone::{Bone, Mass};
 use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::biomechanics::rigid_body::Vector3;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -105,22 +106,53 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::BraceOpen)?;
         let mut mass = None;
+        let mut position = Vector3::default();
 
         while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
             if let Token::Identifier(prop) = &self.current_token {
-                if prop == "mass" {
-                    self.advance();
-                    self.expect(Token::Equal)?;
-                    if let Token::Number(val) = self.current_token {
+                match prop.as_str() {
+                    "mass" => {
                         self.advance();
-                        self.expect(Token::Kg)?;
-                        self.expect(Token::Semicolon)?;
-                        mass = Some(
-                            Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?,
-                        );
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(val) = self.current_token {
+                            self.advance();
+                            self.expect(Token::Kg)?;
+                            self.expect(Token::Semicolon)?;
+                            mass = Some(
+                                Mass::new(val)
+                                    .map_err(|_| ParseError::InvalidMass(val.to_string()))?,
+                            );
+                        }
                     }
-                } else {
-                    self.advance();
+                    "position" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        self.expect(Token::ParenOpen)?;
+                        let x = if let Token::Number(val) = self.current_token {
+                            val
+                        } else {
+                            0.0
+                        };
+                        self.advance();
+                        self.expect(Token::Comma)?;
+                        let y = if let Token::Number(val) = self.current_token {
+                            val
+                        } else {
+                            0.0
+                        };
+                        self.advance();
+                        self.expect(Token::Comma)?;
+                        let z = if let Token::Number(val) = self.current_token {
+                            val
+                        } else {
+                            0.0
+                        };
+                        self.advance();
+                        self.expect(Token::ParenClose)?;
+                        self.expect(Token::Semicolon)?;
+                        position = Vector3 { x, y, z };
+                    }
+                    _ => self.advance(),
                 }
             } else {
                 self.advance();
@@ -129,7 +161,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::BraceClose)?;
 
         let mass = mass.ok_or_else(|| ParseError::MissingProperty("mass".to_string()))?;
-        Ok(Bone::new(id, mass))
+        Ok(Bone::new(id, mass, position))
     }
 
     fn parse_joint(&mut self, bones: &HashMap<String, Bone>) -> Result<Joint, ParseError> {
@@ -264,8 +296,8 @@ mod tests {
     fn test_parser_complex_organism() {
         let input = "
             organism Worm {
-                bone Head { mass = 1.0 kg; }
-                bone Tail { mass = 1.0 kg; }
+                bone Head { mass = 1.0 kg; position = (0, 1, 0); }
+                bone Tail { mass = 1.0 kg; position = (0, 0, 0); }
                 joint Neck { source = Head; target = Tail; }
                 muscle Motor { source = Head; target = Tail; max_force = 50.0 Nm; }
             }
@@ -275,6 +307,7 @@ mod tests {
 
         assert_eq!(ast.name, "Worm");
         assert_eq!(ast.bones.len(), 2);
+        assert_eq!(ast.bones[0].position().y, 1.0);
         assert_eq!(ast.joints.len(), 1);
         assert_eq!(ast.muscles.len(), 1);
         assert_eq!(ast.muscles[0].max_force(), 50.0);
