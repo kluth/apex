@@ -13,6 +13,7 @@ Foundational decisions regarding the APEX architecture are permanently recorded 
 9. [ADR-009: Synaptic Wiring and Proprioception](./ADRs/ADR-009-Synaptic-Wiring-Proprioception.md)
 10. [ADR-010: Soft-Body Integument and Collision](./ADRs/ADR-010-Soft-Body-Integument.md)
 11. [ADR-011: Time-Stepping and Substepping Strategy](./ADRs/ADR-011-Substepping-Strategy.md)
+12. [ADR-012: Compiler Architecture](./ADRs/ADR-012-Compiler-Architecture.md)
 
 ## The Living Domain Lexicon (Ubiquitous Language)
 
@@ -51,6 +52,8 @@ This glossary defines the explicit terms used within the APEX source code. To ma
 
 ### Application: Compiler Pipeline
 * **`CompilerPipeline` (Application Service):** Orchestrates the transformation of high-level AST domain objects into optimized AIR topology.
+* **`Lexer` (Compiler Component):** Tokenizes APEX source text into a stream of semantic symbols.
+* **`Parser` (Compiler Component):** Implements recursive-descent logic to construct the AST from a token stream.
 * **`BiologicalValidator` (Domain Service):** Enforces biological plausibility (e.g., uniqueness of identifiers) during the compilation pass.
 
 ### Domain: Movement & Nervous System

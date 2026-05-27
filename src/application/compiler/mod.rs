@@ -1,3 +1,5 @@
+pub mod lexer;
+pub mod parser;
 pub mod pipeline;
 pub mod validator;
 
@@ -7,10 +9,19 @@ mod tests {
     use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
     use crate::domain::ast::muscle::Muscle;
     use crate::domain::ast::skin::{Skin, CollisionHull, CollisionPrimitive};
-    
-    
+    use crate::domain::ast::synapse::Synapse;
+    use crate::domain::movement::cpg::Cpg;
     use super::pipeline::CompilerPipeline;
     use super::validator::{BiologicalValidator, ValidationError};
+
+    #[test]
+    fn test_full_compilation_from_text() {
+        let input = "organism Biped { bone Femur { mass = 2.0 kg; } }";
+        let pipeline = CompilerPipeline::new();
+        let topology = pipeline.compile(input).expect("Full compilation should pass");
+        
+        assert_eq!(topology.node_count(), 1);
+    }
 
     #[test]
     fn test_compiler_lowering_bone_to_topology() {
@@ -79,6 +90,28 @@ mod tests {
 
         let pipeline = CompilerPipeline::new();
         let result = pipeline.lower(vec![femur], vec![], vec![], vec![], vec![skin]);
+        
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_compiler_lowering_synapse() {
+        let mass = Mass::new(1.0).unwrap();
+        let femur = Bone::new("Femur".to_string(), mass.clone());
+        let tibia = Bone::new("Tibia".to_string(), mass);
+        let muscle = Muscle::new(
+            "Biceps".to_string(),
+            &femur,
+            &tibia,
+            (0.0, 0.0, 0.0),
+            (0.0, 0.5, 0.0),
+            500.0,
+        );
+        let cpg = Cpg::new(1.0);
+        let synapse = Synapse::new("Syn_1".to_string(), &cpg, &muscle, 1.0);
+
+        let pipeline = CompilerPipeline::new();
+        let result = pipeline.lower(vec![femur, tibia], vec![], vec![muscle], vec![synapse], vec![]);
         
         assert!(result.is_ok());
     }

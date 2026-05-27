@@ -1,4 +1,5 @@
 use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
+use crate::application::compiler::parser::{Parser, ParseError};
 use crate::domain::air::topology::{NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
@@ -7,7 +8,25 @@ use crate::domain::ast::skin::Skin;
 use crate::domain::ast::synapse::Synapse;
 use std::collections::HashMap;
 
-/// Application Service responsible for lowering AST to AIR.
+#[derive(Debug, PartialEq)]
+pub enum CompileError {
+    Parse(String),
+    Validation(ValidationError),
+}
+
+impl From<ParseError> for CompileError {
+    fn from(err: ParseError) -> Self {
+        CompileError::Parse(format!("{:?}", err))
+    }
+}
+
+impl From<ValidationError> for CompileError {
+    fn from(err: ValidationError) -> Self {
+        CompileError::Validation(err)
+    }
+}
+
+/// Application Service responsible for orchestrating the compilation pass.
 pub struct CompilerPipeline;
 
 impl Default for CompilerPipeline {
@@ -21,8 +40,18 @@ impl CompilerPipeline {
         Self
     }
 
+    /// Compiles raw APEX source text into an AIR Topology.
+    /// Full Pipeline: Text -> Lex -> Parse -> Validate -> Lower
+    pub fn compile(&self, source: &str) -> Result<Topology, CompileError> {
+        // 1. Lex & Parse
+        let mut parser = Parser::new(source);
+        let (_name, bones) = parser.parse_organism()?;
+        
+        // 2. Validate & Lower
+        self.lower(bones, vec![], vec![], vec![], vec![]).map_err(Into::into)
+    }
+
     /// Lowers a collection of AST components into an AIR Topology.
-    /// This is the primary 'compilation' pass for anatomical and neural structure.
     pub fn lower(
         &self,
         bones: Vec<Bone>,
@@ -73,8 +102,6 @@ impl CompilerPipeline {
             let _target_id = bone_map
                 .get(skin.target_bone_id())
                 .expect("Target bone for skin must exist");
-            
-            // Skin segments are lowered to volumetric hulls attached to the node.
             tracing::debug!("Lowering Skin shell: {}", skin.id());
         }
 
