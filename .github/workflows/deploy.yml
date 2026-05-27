@@ -1,0 +1,40 @@
+name: Deploy APEX Viewer
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate APEX Model
+        run: cargo run --example export_human
+
+      - name: Prepare Web Distribution
+        run: |
+          mkdir -p public
+          cp examples/viewer.html public/index.html
+          cp human_skeleton.glb public/human_skeleton.glb
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
