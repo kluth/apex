@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Domain (Integumentary System):** Implemented the initial soft-body foundation. Introduces `Skin` AST and `VolumeConstraint` for XPBD, enabling volume-preserving biological tissue and environmental collision hulls (Issue #22).
 - **Domain (Movement/Nervous System):** Implemented Synaptic wiring and Proprioceptive feedback. Enables the connection of CPG signals to muscles and reactive neural modulation based on physical stretch (Issue #20).
 - **Domain (Biomechanics):** Implemented XPBD Joint Constraints (`DistanceConstraint`). Enables the creation of stable skeletal kinematic chains with support for rigid and compliant connections (Issue #16).
 - **Infrastructure (Telemetry):** Integrated `tracing` and `tracing-subscriber` for centralized observability. Established the `prelude` standard library export for the APEX ecosystem (Issue #14).
