@@ -65,7 +65,11 @@
         scene.add(visualGroup);
 
         async function loadModel() {
-            const glbPath = '../human_skeleton.glb?t=' + Date.now();
+            // Determine path based on environment (GitHub Pages vs Local)
+            const isDeployed = window.location.hostname.includes('github.io');
+            const glbPath = isDeployed 
+                ? './human_skeleton.glb?t=' + Date.now()
+                : '../human_skeleton.glb?t=' + Date.now();
             
             loader.load(glbPath, (gltf) => {
                 // Clear previous

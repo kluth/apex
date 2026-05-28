@@ -32,7 +32,7 @@ impl GltfExporter {
         // 1. Identify parents based on structural edges
         let mut parent_map = HashMap::new();
         let mut children_map: HashMap<usize, Vec<usize>> = HashMap::new();
-        
+
         for edge in topology.edges() {
             let s = edge.source().index();
             let t = edge.target().index();
@@ -47,11 +47,13 @@ impl GltfExporter {
             let display_name = topology.node_name(id).unwrap_or("Unknown");
             let pos = topology.node_position(id).unwrap_or_default();
 
-            // We use absolute coordinates in translation. 
+            // We use absolute coordinates in translation.
             // In a flat hierarchy (all nodes as roots), this is standard.
             // When nesting, we must subtract parent coordinates.
             let translation = if let Some(&parent_idx) = parent_map.get(&i) {
-                let p_pos = topology.node_position(NodeId::new(parent_idx)).unwrap_or_default();
+                let p_pos = topology
+                    .node_position(NodeId::new(parent_idx))
+                    .unwrap_or_default();
                 let rel = pos - p_pos;
                 [rel.x as f32, rel.y as f32, rel.z as f32]
             } else {
@@ -104,15 +106,20 @@ impl GltfExporter {
         let json_data = to_vec(&root).map_err(|e| e.to_string())?;
         let mut file = File::create(path).map_err(|e| e.to_string())?;
         file.write_all(b"glTF").map_err(|e| e.to_string())?;
-        file.write_all(&2u32.to_le_bytes()).map_err(|e| e.to_string())?;
-        
+        file.write_all(&2u32.to_le_bytes())
+            .map_err(|e| e.to_string())?;
+
         let padding = (4 - (json_data.len() % 4)) % 4;
         let padded_len = (json_data.len() + padding) as u32;
-        file.write_all(&(12 + 8 + padded_len).to_le_bytes()).map_err(|e| e.to_string())?;
-        file.write_all(&padded_len.to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&(12 + 8 + padded_len).to_le_bytes())
+            .map_err(|e| e.to_string())?;
+        file.write_all(&padded_len.to_le_bytes())
+            .map_err(|e| e.to_string())?;
         file.write_all(b"JSON").map_err(|e| e.to_string())?;
         file.write_all(&json_data).map_err(|e| e.to_string())?;
-        for _ in 0..padding { file.write_all(b" ").map_err(|e| e.to_string())?; }
+        for _ in 0..padding {
+            file.write_all(b" ").map_err(|e| e.to_string())?;
+        }
 
         Ok(())
     }

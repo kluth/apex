@@ -125,7 +125,7 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self) -> Token {
         let start = self.pos;
-        
+
         // Handle leading minus
         if self.input[self.pos..].starts_with('-') {
             self.pos += 1;
@@ -181,8 +181,11 @@ mod tests {
         assert_eq!(lexer.next_token(), Token::Number(2.0));
         assert_eq!(lexer.next_token(), Token::Kg);
         assert_eq!(lexer.next_token(), Token::Semicolon);
-        
-        assert_eq!(lexer.next_token(), Token::Identifier("position".to_string()));
+
+        assert_eq!(
+            lexer.next_token(),
+            Token::Identifier("position".to_string())
+        );
         assert_eq!(lexer.next_token(), Token::Equal);
         assert_eq!(lexer.next_token(), Token::ParenOpen);
         assert_eq!(lexer.next_token(), Token::Number(-0.5));

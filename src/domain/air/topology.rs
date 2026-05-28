@@ -101,7 +101,9 @@ impl Topology {
     }
 
     pub fn node_mesh_reference(&self, id: NodeId) -> Option<&MeshReference> {
-        self.nodes.get(id.index()).and_then(|n| n.mesh_reference.as_ref())
+        self.nodes
+            .get(id.index())
+            .and_then(|n| n.mesh_reference.as_ref())
     }
 
     pub fn edges(&self) -> &[Edge] {
