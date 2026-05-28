@@ -69,7 +69,11 @@ impl CompilerPipeline {
         let mut bone_map: HashMap<String, NodeId> = HashMap::new();
 
         for bone in bones {
-            let id = topology.add_node(bone.id().to_string(), bone.position());
+            let id = topology.add_node(
+                bone.id().to_string(),
+                bone.position(),
+                bone.mesh_reference().cloned(),
+            );
             bone_map.insert(bone.id().to_string(), id);
         }
 

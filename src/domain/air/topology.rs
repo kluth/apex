@@ -1,3 +1,4 @@
+use crate::domain::ast::bone::MeshReference;
 use crate::domain::biomechanics::rigid_body::Vector3;
 
 /// Represents an index within the Topology Arena for a Node (Bone).
@@ -53,6 +54,7 @@ impl Edge {
 pub struct Node {
     pub name: String,
     pub position: Vector3,
+    pub mesh_reference: Option<MeshReference>,
 }
 
 /// The Anatomy Intermediate Representation topological graph.
@@ -71,9 +73,18 @@ impl Topology {
         }
     }
 
-    pub fn add_node(&mut self, name: String, position: Vector3) -> NodeId {
+    pub fn add_node(
+        &mut self,
+        name: String,
+        position: Vector3,
+        mesh_reference: Option<MeshReference>,
+    ) -> NodeId {
         let idx = self.nodes.len();
-        self.nodes.push(Node { name, position });
+        self.nodes.push(Node {
+            name,
+            position,
+            mesh_reference,
+        });
         NodeId(idx)
     }
 
@@ -87,6 +98,10 @@ impl Topology {
 
     pub fn node_position(&self, id: NodeId) -> Option<Vector3> {
         self.nodes.get(id.index()).map(|n| n.position)
+    }
+
+    pub fn node_mesh_reference(&self, id: NodeId) -> Option<&MeshReference> {
+        self.nodes.get(id.index()).and_then(|n| n.mesh_reference.as_ref())
     }
 
     pub fn edges(&self) -> &[Edge] {

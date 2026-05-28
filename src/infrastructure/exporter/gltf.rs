@@ -1,12 +1,12 @@
 use crate::domain::air::topology::{NodeId, Topology};
 use gltf_json as json;
 use serde_json::to_vec;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 /// Infrastructure Adapter for exporting AIR Topology to GLTF 2.0.
+/// Uses a 'Point-Cloud' strategy where every node is a root to avoid transform drift.
 pub struct GltfExporter;
 
 impl Default for GltfExporter {
@@ -28,18 +28,7 @@ impl GltfExporter {
     ) -> Result<(), String> {
         let mut root = json::Root::default();
 
-        // 1. Map edges
-        let mut parent_map = HashMap::new();
-        let mut edges_list = Vec::new();
-        for edge in topology.edges() {
-            let s = edge.source().index();
-            let t = edge.target().index();
-            parent_map.insert(t, s);
-            edges_list.push((s, t));
-        }
-
-        // 2. Create Nodes (Flat, no hierarchy in GLTF transforms)
-        // We use absolute coordinates in translation and store name in extras for safety
+        // 1. Create Nodes (Strictly flat, absolute coordinates)
         let mut nodes = Vec::new();
         for i in 0..topology.node_count() {
             let id = NodeId::new(i);
@@ -48,9 +37,9 @@ impl GltfExporter {
 
             nodes.push(json::Node {
                 camera: None,
-                children: None,
+                children: None, // No hierarchy in the 3D file itself
                 extensions: Default::default(),
-                extras: Default::default(),
+                extras: None,
                 matrix: None,
                 mesh: None,
                 name: Some(format!("APEX_NODE_{}", display_name)),
@@ -62,33 +51,17 @@ impl GltfExporter {
             });
         }
 
-        // 3. Link Hierarchy (Needed for the viewer to find connections)
-        for (p, t) in edges_list {
-            if p < nodes.len() && t < nodes.len() {
-                let parent_node = &mut nodes[p];
-                if parent_node.children.is_none() {
-                    parent_node.children = Some(Vec::new());
-                }
-                let children = parent_node.children.as_mut().unwrap();
-                let child_idx = json::Index::new(t as u32);
-                if !children.contains(&child_idx) {
-                    children.push(child_idx);
-                }
-            }
-        }
-
-        // 4. Scene setup (All nodes are roots in this 'Flat' strategy)
-        // This ensures every node is rendered at its absolute position
+        // 2. Setup Scene (All nodes are top-level roots)
         let scene_idx = root.push(json::Scene {
             extensions: Default::default(),
             extras: Default::default(),
-            name: Some("APEX Organism".to_string()),
+            name: Some("APEX Point Cloud".to_string()),
             nodes: (0..nodes.len()).map(|i| json::Index::new(i as u32)).collect(),
         });
         root.scene = Some(scene_idx);
         root.nodes = nodes;
 
-        // 5. Package GLB
+        // 3. Package as binary GLB
         let json_data = to_vec(&root).map_err(|e| e.to_string())?;
         let mut file = File::create(path).map_err(|e| e.to_string())?;
         file.write_all(b"glTF").map_err(|e| e.to_string())?;
@@ -116,7 +89,7 @@ mod tests {
     #[test]
     fn test_gltf_export_file_creation() {
         let mut topology = Topology::new();
-        topology.add_node("Head".to_string(), Vector3::default());
+        topology.add_node("Head".to_string(), Vector3::default(), None);
 
         let exporter = GltfExporter::new();
         let path = "test_export.glb";
