@@ -17,4 +17,7 @@ organism AverageHuman {
 
     // 4. SENSORY (The Feedback System - Proprioceptors)
     include "human_receptors.apex";
+
+    // 5. INTEGUMENTARY (The Skin - Volumetric Envelopes)
+    include "human_skin.apex";
 }

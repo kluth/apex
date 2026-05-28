@@ -40,6 +40,8 @@ pub enum EdgeType {
     Neural,
     /// A sensory link (Feedback) that carries data back to controllers.
     Sensory,
+    /// An integumentary link (Skin) that defines volumetric envelopes.
+    Integument,
 }
 
 /// Represents a connection between two Nodes.

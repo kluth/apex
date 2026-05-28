@@ -2,6 +2,7 @@ use super::lexer::{Lexer, Token};
 use crate::domain::ast::bone::{AssetPath, Bone, Mass, MeshReference};
 use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::ast::skin::{CollisionHull, CollisionPrimitive, Skin};
 use crate::domain::ast::synapse::Synapse;
 use crate::domain::movement::cpg::Cpg;
 use crate::domain::biomechanics::rigid_body::Vector3;
@@ -32,6 +33,7 @@ pub struct OrganismAst {
     pub cpgs: Vec<Cpg>,
     pub synapses: Vec<Synapse>,
     pub receptors: Vec<ReceptorAst>,
+    pub skins: Vec<Skin>,
 }
 
 pub struct Parser<'a> {
@@ -111,8 +113,9 @@ impl<'a> Parser<'a> {
         let mut cpgs = Vec::new();
         let mut synapses = Vec::new();
         let mut receptors = Vec::new();
+        let mut skins = Vec::new();
 
-        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, &mut receptors, false)?;
+        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, &mut receptors, &mut skins, false)?;
 
         self.expect(Token::BraceClose)?;
         Ok(OrganismAst {
@@ -123,6 +126,7 @@ impl<'a> Parser<'a> {
             cpgs,
             synapses,
             receptors,
+            skins,
         })
     }
 
@@ -134,6 +138,7 @@ impl<'a> Parser<'a> {
         cpgs: &mut Vec<Cpg>,
         synapses: &mut Vec<Synapse>,
         receptors: &mut Vec<ReceptorAst>,
+        skins: &mut Vec<Skin>,
         is_include: bool,
     ) -> Result<(), ParseError> {
         let terminal = if is_include { Token::Eof } else { Token::BraceClose };
@@ -155,9 +160,8 @@ impl<'a> Parser<'a> {
                                 self.cpg_registry.clone(),
                             );
 
-                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, receptors, true)?;
+                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, receptors, skins, true)?;
                         
-                        // Sync registries
                         self.bone_registry.extend(sub_parser.bone_registry);
                         self.muscle_registry.extend(sub_parser.muscle_registry);
                         self.cpg_registry.extend(sub_parser.cpg_registry);
@@ -189,6 +193,9 @@ impl<'a> Parser<'a> {
                 }
                 Token::Receptor => {
                     receptors.push(self.parse_receptor()?);
+                }
+                Token::Skin => {
+                    skins.push(self.parse_skin()?);
                 }
                 _ => self.advance(),
             }
@@ -481,6 +488,97 @@ impl<'a> Parser<'a> {
 
         let muscle_id = target_muscle.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
         Ok(ReceptorAst { id, muscle_id, receptor_type: r_type })
+    }
+
+    fn parse_skin(&mut self) -> Result<Skin, ParseError> {
+        self.expect(Token::Skin)?;
+        let id = self.read_identifier("Expected skin id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut bone_id = None;
+        let mut hulls = Vec::new();
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "anchor" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        bone_id = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "hull" => {
+                        self.advance();
+                        let hull_id = self.read_identifier("Expected hull id")?;
+                        self.advance();
+                        self.expect(Token::BraceOpen)?;
+                        
+                        let mut primitive = CollisionPrimitive::Sphere { radius: 0.1 };
+                        let mut offset = (0.0, 0.0, 0.0);
+
+                        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+                             if let Token::Identifier(hprop) = &self.current_token {
+                                 match hprop.as_str() {
+                                     "sphere" => {
+                                         self.advance();
+                                         self.expect(Token::ParenOpen)?;
+                                         let r = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance();
+                                         self.expect(Token::ParenClose)?;
+                                         self.expect(Token::Semicolon)?;
+                                         primitive = CollisionPrimitive::Sphere { radius: r };
+                                     },
+                                     "box" => {
+                                         self.advance();
+                                         self.expect(Token::ParenOpen)?;
+                                         let w = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let h = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let d = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance();
+                                         self.expect(Token::ParenClose)?;
+                                         self.expect(Token::Semicolon)?;
+                                         primitive = CollisionPrimitive::Box { width: w, height: h, depth: d };
+                                     },
+                                     "offset" => {
+                                         self.advance();
+                                         self.expect(Token::Equal)?;
+                                         self.expect(Token::ParenOpen)?;
+                                         let x = if let Token::Number(v) = self.current_token { v } else { 0.0 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let y = if let Token::Number(v) = self.current_token { v } else { 0.0 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let z = if let Token::Number(v) = self.current_token { v } else { 0.0 };
+                                         self.advance();
+                                         self.expect(Token::ParenClose)?;
+                                         self.expect(Token::Semicolon)?;
+                                         offset = (x, y, z);
+                                     },
+                                     _ => self.advance(),
+                                 }
+                             } else {
+                                 self.advance();
+                             }
+                        }
+                        self.expect(Token::BraceClose)?;
+                        hulls.push(CollisionHull { id: hull_id, primitive, local_offset: offset });
+                    }
+                    _ => self.advance(),
+                }
+            } else {
+                self.advance();
+            }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let b_id = bone_id.ok_or_else(|| ParseError::MissingProperty("anchor".to_string()))?;
+        let bone = self.bone_registry.get(&b_id).ok_or(ParseError::BoneNotFound(b_id))?;
+        let mut skin = Skin::new(id, bone);
+        for h in hulls { skin.add_hull(h); }
+        Ok(skin)
     }
 
     fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {

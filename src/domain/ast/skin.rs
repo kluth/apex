@@ -1,10 +1,12 @@
 use crate::domain::ast::bone::Bone;
 
-/// Represents a geometric primitive used for environmental interaction.
+/// Represents a geometric primitive used for environmental interaction and volumetric representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CollisionPrimitive {
     Sphere { radius: f64 },
     Box { width: f64, height: f64, depth: f64 },
+    Capsule { radius: f64, length: f64 },
+    Cylinder { radius: f64, length: f64 },
 }
 
 /// Value Object representing a collision anchor on a bone.
