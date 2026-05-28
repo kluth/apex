@@ -2,6 +2,8 @@ use super::lexer::{Lexer, Token};
 use crate::domain::ast::bone::{AssetPath, Bone, Mass, MeshReference};
 use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
 use crate::domain::ast::muscle::Muscle;
+use crate::domain::ast::synapse::Synapse;
+use crate::domain::movement::cpg::Cpg;
 use crate::domain::biomechanics::rigid_body::Vector3;
 use std::collections::HashMap;
 use std::fs;
@@ -12,6 +14,8 @@ pub enum ParseError {
     InvalidMass(String),
     MissingProperty(String),
     BoneNotFound(String),
+    MuscleNotFound(String),
+    CpgNotFound(String),
 }
 
 pub struct OrganismAst {
@@ -19,6 +23,8 @@ pub struct OrganismAst {
     pub bones: Vec<Bone>,
     pub joints: Vec<Joint>,
     pub muscles: Vec<Muscle>,
+    pub cpgs: Vec<Cpg>,
+    pub synapses: Vec<Synapse>,
 }
 
 pub struct Parser<'a> {
@@ -26,6 +32,8 @@ pub struct Parser<'a> {
     current_token: Token,
     base_path: String,
     bone_registry: HashMap<String, Bone>,
+    muscle_registry: HashMap<String, Muscle>,
+    cpg_registry: HashMap<String, Cpg>,
 }
 
 impl<'a> Parser<'a> {
@@ -37,6 +45,8 @@ impl<'a> Parser<'a> {
             current_token,
             base_path: "examples/".to_string(),
             bone_registry: HashMap::new(),
+            muscle_registry: HashMap::new(),
+            cpg_registry: HashMap::new(),
         }
     }
 
@@ -45,8 +55,15 @@ impl<'a> Parser<'a> {
         self
     }
 
-    pub fn with_registry(mut self, registry: HashMap<String, Bone>) -> Self {
-        self.bone_registry = registry;
+    pub fn with_registries(
+        mut self,
+        bones: HashMap<String, Bone>,
+        muscles: HashMap<String, Muscle>,
+        cpgs: HashMap<String, Cpg>,
+    ) -> Self {
+        self.bone_registry = bones;
+        self.muscle_registry = muscles;
+        self.cpg_registry = cpgs;
         self
     }
 
@@ -84,8 +101,10 @@ impl<'a> Parser<'a> {
         let mut bones = Vec::new();
         let mut joints = Vec::new();
         let mut muscles = Vec::new();
+        let mut cpgs = Vec::new();
+        let mut synapses = Vec::new();
 
-        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, false)?;
+        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, false)?;
 
         self.expect(Token::BraceClose)?;
         Ok(OrganismAst {
@@ -93,15 +112,18 @@ impl<'a> Parser<'a> {
             bones,
             joints,
             muscles,
+            cpgs,
+            synapses,
         })
     }
 
-    /// Internal recursive method to parse bones, joints, muscles, and nested includes.
     fn parse_body_elements(
         &mut self,
         bones: &mut Vec<Bone>,
         joints: &mut Vec<Joint>,
         muscles: &mut Vec<Muscle>,
+        cpgs: &mut Vec<Cpg>,
+        synapses: &mut Vec<Synapse>,
         is_include: bool,
     ) -> Result<(), ParseError> {
         let terminal = if is_include { Token::Eof } else { Token::BraceClose };
@@ -117,15 +139,18 @@ impl<'a> Parser<'a> {
 
                         let mut sub_parser = Parser::new(&source)
                             .with_base_path(self.base_path.clone())
-                            .with_registry(self.bone_registry.clone());
+                            .with_registries(
+                                self.bone_registry.clone(),
+                                self.muscle_registry.clone(),
+                                self.cpg_registry.clone(),
+                            );
 
-                        // Recursively parse elements from the included file
-                        sub_parser.parse_body_elements(bones, joints, muscles, true)?;
+                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, true)?;
                         
-                        // Sync registry back from sub-parser
-                        for b in &sub_parser.bone_registry {
-                            self.bone_registry.insert(b.0.clone(), b.1.clone());
-                        }
+                        // Sync registries
+                        self.bone_registry.extend(sub_parser.bone_registry);
+                        self.muscle_registry.extend(sub_parser.muscle_registry);
+                        self.cpg_registry.extend(sub_parser.cpg_registry);
 
                         self.advance();
                         self.expect(Token::Semicolon)?;
@@ -140,7 +165,17 @@ impl<'a> Parser<'a> {
                     joints.push(self.parse_joint()?);
                 }
                 Token::Muscle => {
-                    muscles.push(self.parse_muscle()?);
+                    let muscle = self.parse_muscle()?;
+                    self.muscle_registry.insert(muscle.id().to_string(), muscle.clone());
+                    muscles.push(muscle);
+                }
+                Token::Cpg => {
+                    let cpg = self.parse_cpg()?;
+                    self.cpg_registry.insert(cpg.id().to_string(), cpg.clone());
+                    cpgs.push(cpg);
+                }
+                Token::Synapse => {
+                    synapses.push(self.parse_synapse()?);
                 }
                 _ => self.advance(),
             }
@@ -168,9 +203,7 @@ impl<'a> Parser<'a> {
                             self.advance();
                             self.expect(Token::Kg)?;
                             self.expect(Token::Semicolon)?;
-                            mass = Some(
-                                Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?,
-                            );
+                            mass = Some(Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?);
                         }
                     }
                     "position" => {
@@ -255,15 +288,8 @@ impl<'a> Parser<'a> {
         let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
         let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
-        Joint::new(
-            id,
-            JointType::Spherical,
-            b1,
-            b2,
-            JointAttachment::default(),
-            JointAttachment::default(),
-        )
-        .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
+        Joint::new(id, JointType::Spherical, b1, b2, JointAttachment::default(), JointAttachment::default())
+            .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
     }
 
     fn parse_muscle(&mut self) -> Result<Muscle, ParseError> {
@@ -317,24 +343,98 @@ impl<'a> Parser<'a> {
         let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
         let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
-        Ok(Muscle::new(
-            id,
-            b1,
-            b2,
-            (0.0, 0.0, 0.0),
-            (0.0, 0.0, 0.0),
-            max_force,
-        ))
+        Ok(Muscle::new(id, b1, b2, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), max_force))
+    }
+
+    fn parse_cpg(&mut self) -> Result<Cpg, ParseError> {
+        self.expect(Token::Cpg)?;
+        let id = self.read_identifier("Expected CPG id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut freq = 1.0;
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "frequency" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(val) = self.current_token {
+                            self.advance();
+                            self.expect(Token::Hz)?;
+                            self.expect(Token::Semicolon)?;
+                            freq = val;
+                        }
+                    }
+                    _ => self.advance(),
+                }
+            } else {
+                self.advance();
+            }
+        }
+        self.expect(Token::BraceClose)?;
+        Ok(Cpg::new(id, freq))
+    }
+
+    fn parse_synapse(&mut self) -> Result<Synapse, ParseError> {
+        self.expect(Token::Synapse)?;
+        let id = self.read_identifier("Expected synapse id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut source = None;
+        let mut target = None;
+        let mut weight = 1.0;
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "source" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        source = Some(self.read_identifier("Expected CPG id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "target" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        target = Some(self.read_identifier("Expected muscle id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "weight" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(val) = self.current_token {
+                            self.advance();
+                            self.expect(Token::Semicolon)?;
+                            weight = val;
+                        }
+                    }
+                    _ => self.advance(),
+                }
+            } else {
+                self.advance();
+            }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
+        let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
+
+        let cpg = self.cpg_registry.get(&s_id).ok_or(ParseError::CpgNotFound(s_id))?;
+        let muscle = self.muscle_registry.get(&t_id).ok_or(ParseError::MuscleNotFound(t_id))?;
+
+        Ok(Synapse::new(id, cpg, muscle, weight))
     }
 
     fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {
         if let Token::Identifier(n) = &self.current_token {
             Ok(n.clone())
         } else {
-            Err(ParseError::UnexpectedToken(
-                self.current_token.clone(),
-                msg.to_string(),
-            ))
+            Err(ParseError::UnexpectedToken(self.current_token.clone(), msg.to_string()))
         }
     }
 }

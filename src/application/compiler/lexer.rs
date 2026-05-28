@@ -6,6 +6,8 @@ pub enum Token {
     Bone,
     Joint,
     Muscle,
+    Cpg,
+    Synapse,
     Include,
 
     // Identifiers and Literals
@@ -18,6 +20,7 @@ pub enum Token {
     M,
     Nm,
     Rad,
+    Hz,
 
     // Delimiters
     BraceOpen,
@@ -114,11 +117,14 @@ impl<'a> Lexer<'a> {
             "bone" => Token::Bone,
             "joint" => Token::Joint,
             "muscle" => Token::Muscle,
+            "cpg" => Token::Cpg,
+            "synapse" => Token::Synapse,
             "include" => Token::Include,
             "kg" => Token::Kg,
             "m" => Token::M,
             "Nm" => Token::Nm,
             "rad" => Token::Rad,
+            "Hz" => Token::Hz,
             _ => Token::Identifier(identifier.to_string()),
         }
     }

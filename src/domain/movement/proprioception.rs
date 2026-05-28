@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn test_proprioceptive_feedback_loop() {
-        let mut cpg = Cpg::new(1.0);
+        let mut cpg = Cpg::new("Test_CPG".to_string(), 1.0);
         let initial_phase = cpg.current_phase();
 
         // Simulate a muscle stretch (20% elongation)

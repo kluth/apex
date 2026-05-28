@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Absolute Stability</title>
+    <title>APEX Neural Layer</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -21,15 +21,17 @@
         }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
         .muscle-val { color: #f44; }
+        .neural-val { color: #44f; }
     </style>
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: ABSOLUTE</span>
+        <span class="title"><span id="hot-indicator"></span>APEX :: NEURAL</span>
         <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
         <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
         <span class="stat">Bones:</span> <span id="points" class="val">0</span><br>
-        <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span>
+        <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span><br>
+        <span class="stat">Synapses:</span> <span id="synapses" class="val neural-val">0</span>
     </div>
     
     <script type="importmap">
@@ -66,9 +68,13 @@
         let visualGroup = new THREE.Group();
         scene.add(visualGroup);
 
-        const jointGeom = new THREE.SphereGeometry(0.015, 12, 12);
+        // Geometries & Materials
+        const jointGeom = new THREE.SphereGeometry(0.015, 8, 8);
+        const cpgGeom = new THREE.SphereGeometry(0.025, 12, 12);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
         const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x330000 });
+        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000033, transparent: true, opacity: 0.6 });
+        const cpgMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x333300 });
         const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
         const baseCylinderGeom = new THREE.CylinderGeometry(0.008, 0.012, 1, 6);
@@ -104,6 +110,7 @@
 
                 const sceneData = gltf.scene.userData;
                 let muscleCount = 0;
+                let synapseCount = 0;
 
                 if (sceneData && sceneData.links) {
                     sceneData.links.forEach(link => {
@@ -120,13 +127,21 @@
                             const len = dir.length();
                             
                             if (len > 0) {
-                                const isMuscle = link.type === "muscle";
-                                const mat = isMuscle ? muscleMat : boneMat;
-                                if (isMuscle) muscleCount++;
+                                let mat = boneMat;
+                                let scale = 1;
+                                if (link.type === "muscle") {
+                                    mat = muscleMat;
+                                    scale = 0.8;
+                                    muscleCount++;
+                                } else if (link.type === "synapse") {
+                                    mat = neuralMat;
+                                    scale = 0.5;
+                                    synapseCount++;
+                                }
 
                                 const mesh = new THREE.Mesh(baseCylinderGeom, mat);
                                 mesh.position.copy(sPos);
-                                mesh.scale.set(isMuscle ? 0.8 : 1, len, isMuscle ? 0.8 : 1);
+                                mesh.scale.set(scale, len, scale);
                                 mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
                                 visualGroup.add(mesh);
                             }
@@ -134,14 +149,24 @@
                     });
                 }
                 document.getElementById('muscles').innerText = muscleCount;
+                document.getElementById('synapses').innerText = synapseCount;
 
-                // Markers
-                nodeMap.forEach(node => {
+                // Markers & CPGs
+                nodeMap.forEach((node, name) => {
                     const worldPos = new THREE.Vector3();
                     node.getWorldPosition(worldPos);
-                    const marker = new THREE.Mesh(jointGeom, jointMat);
-                    marker.position.copy(worldPos);
-                    visualGroup.add(marker);
+                    
+                    if (name.startsWith("CPG_")) {
+                        const marker = new THREE.Mesh(cpgGeom, cpgMat);
+                        marker.position.copy(worldPos);
+                        visualGroup.add(marker);
+                    } else if (name.startsWith("MUSCLE_NODE_")) {
+                        // Invisible helper
+                    } else {
+                        const marker = new THREE.Mesh(jointGeom, jointMat);
+                        marker.position.copy(worldPos);
+                        visualGroup.add(marker);
+                    }
                 });
 
             }, undefined, (e) => {

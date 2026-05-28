@@ -36,6 +36,10 @@ pub enum EdgeType {
     Structural,
     /// An active link (Muscle) that provides force between nodes.
     Actuator,
+    /// A neural link (Synapse) that carries control signals.
+    Neural,
+    /// A sensory link (Feedback) that carries data back to controllers.
+    Sensory,
 }
 
 /// Represents a connection between two Nodes.

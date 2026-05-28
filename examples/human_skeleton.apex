@@ -10,4 +10,7 @@ organism AverageHuman {
     include "human_muscles_torso.apex";
     include "human_muscles_arms.apex";
     include "human_muscles_legs.apex";
+
+    // 3. NEURAL (The Control System)
+    include "human_neural.apex";
 }

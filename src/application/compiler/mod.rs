@@ -34,7 +34,7 @@ mod tests {
 
         let pipeline = CompilerPipeline::new();
         let topology = pipeline
-            .lower(vec![bone_ast], vec![], vec![], vec![], vec![])
+            .lower(vec![bone_ast], vec![], vec![], vec![], vec![], vec![])
             .expect("Validation should pass");
 
         assert_eq!(topology.node_count(), 1);
@@ -58,7 +58,7 @@ mod tests {
 
         let pipeline = CompilerPipeline::new();
         let topology = pipeline
-            .lower(vec![femur, tibia], vec![knee], vec![], vec![], vec![])
+            .lower(vec![femur, tibia], vec![knee], vec![], vec![], vec![], vec![])
             .expect("Lowering should pass");
 
         assert_eq!(topology.node_count(), 2);
@@ -81,10 +81,11 @@ mod tests {
 
         let pipeline = CompilerPipeline::new();
         let topology = pipeline
-            .lower(vec![femur, tibia], vec![], vec![biceps], vec![], vec![])
+            .lower(vec![femur, tibia], vec![], vec![biceps], vec![], vec![], vec![])
             .expect("Lowering should pass");
 
-        assert_eq!(topology.node_count(), 2);
+        // Muscle adds a virtual node now!
+        assert_eq!(topology.node_count(), 3);
     }
 
     #[test]
@@ -100,7 +101,7 @@ mod tests {
         });
 
         let pipeline = CompilerPipeline::new();
-        let result = pipeline.lower(vec![femur], vec![], vec![], vec![], vec![skin]);
+        let result = pipeline.lower(vec![femur], vec![], vec![], vec![], vec![], vec![skin]);
 
         assert!(result.is_ok());
     }
@@ -118,7 +119,7 @@ mod tests {
             (0.0, 0.5, 0.0),
             500.0,
         );
-        let cpg = Cpg::new(1.0);
+        let cpg = Cpg::new("Brain_1".to_string(), 1.0);
         let synapse = Synapse::new("Syn_1".to_string(), &cpg, &muscle, 1.0);
 
         let pipeline = CompilerPipeline::new();
@@ -126,6 +127,7 @@ mod tests {
             vec![femur, tibia],
             vec![],
             vec![muscle],
+            vec![cpg],
             vec![synapse],
             vec![],
         );

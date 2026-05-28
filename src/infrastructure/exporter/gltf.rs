@@ -8,7 +8,7 @@ use std::path::Path;
 /// Infrastructure Adapter for exporting AIR Topology to GLTF 2.0.
 /// Uses an "Absolute Metadata" strategy:
 /// 1. All nodes are roots (absolute coordinates) to ensure 100% stability.
-/// 2. All connectivity (Joints & Muscles) is exported in scene extras.
+/// 2. All connectivity (Joints, Muscles, Synapses) is exported in scene extras.
 pub struct GltfExporter;
 
 impl Default for GltfExporter {
@@ -64,6 +64,8 @@ impl GltfExporter {
                 "type": match edge.edge_type() {
                     EdgeType::Structural => "bone",
                     EdgeType::Actuator => "muscle",
+                    EdgeType::Neural => "synapse",
+                    EdgeType::Sensory => "feedback",
                 }
             }));
         }

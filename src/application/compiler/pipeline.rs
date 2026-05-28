@@ -6,6 +6,8 @@ use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
 use crate::domain::ast::skin::Skin;
 use crate::domain::ast::synapse::Synapse;
+use crate::domain::movement::cpg::Cpg;
+use crate::domain::biomechanics::rigid_body::Vector3;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -48,7 +50,7 @@ impl CompilerPipeline {
         let ast = parser.parse_organism()?;
 
         // 2. Validate & Lower
-        self.lower(ast.bones, ast.joints, ast.muscles, vec![], vec![])
+        self.lower(ast.bones, ast.joints, ast.muscles, ast.cpgs, ast.synapses, vec![])
             .map_err(Into::into)
     }
 
@@ -58,8 +60,9 @@ impl CompilerPipeline {
         bones: Vec<Bone>,
         joints: Vec<Joint>,
         muscles: Vec<Muscle>,
+        cpgs: Vec<Cpg>,
         synapses: Vec<Synapse>,
-        skins: Vec<Skin>,
+        _skins: Vec<Skin>,
     ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
         BiologicalValidator::validate_bones(&bones)?;
@@ -67,7 +70,10 @@ impl CompilerPipeline {
         // 2. Lowering Pass
         let mut topology = Topology::new();
         let mut bone_map: HashMap<String, NodeId> = HashMap::new();
+        let mut muscle_map: HashMap<String, NodeId> = HashMap::new();
+        let mut cpg_map: HashMap<String, NodeId> = HashMap::new();
 
+        // Bones become Nodes
         for bone in bones {
             let id = topology.add_node(
                 bone.id().to_string(),
@@ -77,6 +83,15 @@ impl CompilerPipeline {
             bone_map.insert(bone.id().to_string(), id);
         }
 
+        // CPGs become Neural Nodes (Positioned in a virtual "brain" area or near head)
+        for (i, cpg) in cpgs.iter().enumerate() {
+            // Virtual brain grid at Y=2.0
+            let brain_pos = Vector3 { x: (i as f64 * 0.1) - 0.5, y: 2.1, z: 0.0 };
+            let id = topology.add_node(format!("CPG_{}", cpg.id()), brain_pos, None);
+            cpg_map.insert(cpg.id().to_string(), id);
+        }
+
+        // Joints become Structural Edges
         for joint in joints {
             let source_id = bone_map.get(joint.source_bone_id()).ok_or_else(|| {
                 ValidationError::MissingIdentifier(joint.source_bone_id().to_string())
@@ -93,6 +108,7 @@ impl CompilerPipeline {
             );
         }
 
+        // Muscles become Actuator Edges + Virtual Attachment Nodes
         for muscle in muscles {
             let source_id = bone_map.get(muscle.source_bone_id()).ok_or_else(|| {
                 ValidationError::MissingIdentifier(muscle.source_bone_id().to_string())
@@ -107,17 +123,31 @@ impl CompilerPipeline {
                 muscle.id().to_string(),
                 EdgeType::Actuator,
             );
+            
+            // Create a virtual node for the muscle center to visualize synapses.
+            let s_pos = topology.node_position(*source_id).unwrap_or_default();
+            let t_pos = topology.node_position(*target_id).unwrap_or_default();
+            let center = (s_pos + t_pos) * 0.5;
+            
+            let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), center, None);
+            muscle_map.insert(muscle.id().to_string(), m_node_id);
         }
 
+        // Synapses become Neural Edges
         for synapse in synapses {
-            tracing::debug!("Mapping Synapse: {}", synapse.id());
-        }
-
-        for skin in skins {
-            let _target_id = bone_map.get(skin.target_bone_id()).ok_or_else(|| {
-                ValidationError::MissingIdentifier(skin.target_bone_id().to_string())
+            let source_id = cpg_map.get(synapse.source_cpg_id()).ok_or_else(|| {
+                ValidationError::MissingIdentifier(synapse.source_cpg_id().to_string())
             })?;
-            tracing::debug!("Lowering Skin shell: {}", skin.id());
+            let target_id = muscle_map.get(synapse.target_muscle_id()).ok_or_else(|| {
+                ValidationError::MissingIdentifier(synapse.target_muscle_id().to_string())
+            })?;
+
+            topology.add_edge(
+                *source_id,
+                *target_id,
+                synapse.id().to_string(),
+                EdgeType::Neural,
+            );
         }
 
         Ok(topology)

@@ -12,8 +12,8 @@ fn test_compile_and_export_proto_crawler() {
         .compile(source)
         .expect("Failed to compile proto_crawler.apex");
 
-    // 1. Verify Topology
-    assert_eq!(topology.node_count(), 2);
+    // 1. Verify Topology (2 bones + 1 virtual muscle node)
+    assert_eq!(topology.node_count(), 3);
 
     // 2. Export to GLTF
     let exporter = GltfExporter::new();

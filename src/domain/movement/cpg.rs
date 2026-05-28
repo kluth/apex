@@ -4,17 +4,23 @@ use std::f64::consts::PI;
 /// Used to drive rhythmic biological movement by outputting a periodic signal.
 #[derive(Debug, Clone)]
 pub struct Cpg {
+    id: String,
     frequency: f64, // Hz
     phase: f64,     // Accumulated phase
 }
 
 impl Cpg {
     /// Creates a new CPG with the given frequency.
-    pub fn new(frequency: f64) -> Self {
+    pub fn new(id: String, frequency: f64) -> Self {
         Self {
+            id,
             frequency,
             phase: 0.0,
         }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     /// Sets the initial phase of the CPG.

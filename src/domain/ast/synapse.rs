@@ -5,18 +5,16 @@ use crate::domain::movement::cpg::Cpg;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Synapse {
     id: String,
-    source_cpg_id: String, // Simplified mapping via string IDs in AST
+    source_cpg_id: String,
     target_muscle_id: String,
     weight: f64, // Synaptic gain
 }
 
 impl Synapse {
-    pub fn new(id: String, _source: &Cpg, target: &Muscle, weight: f64) -> Self {
-        // Cpg doesn't have an explicit ID yet in the struct, using a placeholder for now
-        // In a real pass, we'd map this via a registry.
+    pub fn new(id: String, source: &Cpg, target: &Muscle, weight: f64) -> Self {
         Self {
             id,
-            source_cpg_id: "CPG_0".to_string(), // Placeholder
+            source_cpg_id: source.id().to_string(),
             target_muscle_id: target.id().to_string(),
             weight,
         }
@@ -24,6 +22,10 @@ impl Synapse {
 
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    pub fn source_cpg_id(&self) -> &str {
+        &self.source_cpg_id
     }
 
     pub fn target_muscle_id(&self) -> &str {
@@ -55,11 +57,12 @@ mod tests {
             (0.0, 0.5, 0.0),
             500.0,
         );
-        let cpg = Cpg::new(1.0);
+        let cpg = Cpg::new("Brain_1".to_string(), 1.0);
 
         let synapse = Synapse::new("Syn_1".to_string(), &cpg, &muscle, 0.8);
 
         assert_eq!(synapse.id(), "Syn_1");
+        assert_eq!(synapse.source_cpg_id(), "Brain_1");
         assert_eq!(synapse.target_muscle_id(), "Biceps");
         assert_eq!(synapse.weight(), 0.8);
     }
