@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX High-Fidelity Organism</title>
+    <title>APEX Final Sanctification</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -27,13 +27,12 @@
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: SENTIENT</span>
-        <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
-        <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
-        <span class="stat">Bones:</span> <span id="points" class="val">0</span><br>
+        <span class="title"><span id="hot-indicator"></span>APEX :: TOTAL FIDELITY</span>
+        <span class="stat">Bones:</span> <span id="boneCount" class="val">0</span> / 206<br>
         <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span><br>
+        <span class="stat">Nerves (CPGs):</span> <span id="nerves" class="val neural-val">0</span><br>
         <span class="stat">Synapses:</span> <span id="synapses" class="val neural-val">0</span><br>
-        <span class="stat">Sensors:</span> <span id="sensors" class="val sensory-val">0</span>
+        <span class="stat">Receptors:</span> <span id="sensors" class="val sensory-val">0</span>
     </div>
     
     <script type="importmap">
@@ -74,7 +73,7 @@
         const cpgGeom = new THREE.SphereGeometry(0.02, 12, 12);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
         const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x330000 });
-        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000033, transparent: true, opacity: 0.5 });
+        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000033, transparent: true, opacity: 0.4 });
         const sensoryMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0x330033, transparent: true, opacity: 0.4 });
         const cpgMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x333300 });
         const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
@@ -99,16 +98,24 @@
                 currentModel.updateMatrixWorld(true);
 
                 const nodeMap = new Map();
+                let actualBoneCount = 0;
+                let cpgCount = 0;
+
                 currentModel.traverse(n => {
                     if (n.isObject3D && n.name.startsWith("APEX_NODE_")) {
                         const name = n.name.replace("APEX_NODE_", "");
                         nodeMap.set(name, n);
+
+                        if (!name.startsWith("CPG_") && !name.startsWith("MUSCLE_NODE_")) {
+                            actualBoneCount++;
+                        } else if (name.startsWith("CPG_")) {
+                            cpgCount++;
+                        }
                     }
                 });
 
-                document.getElementById('points').innerText = nodeMap.size;
-                document.getElementById('status').innerText = "OK";
-                document.getElementById('status').style.color = "#0f0";
+                document.getElementById('boneCount').innerText = actualBoneCount;
+                document.getElementById('nerves').innerText = cpgCount;
 
                 const sceneData = gltf.scene.userData;
                 let muscleCount = 0;
@@ -138,11 +145,11 @@
                                     muscleCount++;
                                 } else if (link.type === "synapse") {
                                     mat = neuralMat;
-                                    scale = 0.4;
+                                    scale = 0.3;
                                     synapseCount++;
                                 } else if (link.type === "feedback") {
                                     mat = sensoryMat;
-                                    scale = 0.3;
+                                    scale = 0.2;
                                     sensorCount++;
                                 }
 
@@ -168,7 +175,7 @@
                         marker.position.copy(worldPos);
                         visualGroup.add(marker);
                     } else if (name.startsWith("MUSCLE_NODE_")) {
-                        // Tiny point for muscle center
+                        // Invisible
                     } else {
                         const marker = new THREE.Mesh(jointGeom, jointMat);
                         marker.position.copy(worldPos);
@@ -184,22 +191,11 @@
 
         loadModel();
         setInterval(loadModel, 2000);
-
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     </script>
 </body>
 </html>

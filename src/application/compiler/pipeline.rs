@@ -129,20 +129,26 @@ impl CompilerPipeline {
             let mut pos = Vector3 { x: 0.0, y: 2.1, z: 0.0 }; // Fallback "Brain"
 
             // ANATOMICAL POSITIONING:
-            // Spinal Nerves are placed at their corresponding Vertebrae.
-            // Cranial Nerves are placed at the Head/C1 area.
             if id_str.starts_with("Nerve_") {
-                let vert_id = id_str.replace("Nerve_", "");
-                if let Some(node_id) = bone_map.get(&vert_id) {
-                    pos = topology.node_position(*node_id).unwrap_or(pos);
-                    // Slightly offset from spine for visibility
-                    pos.x += 0.05; 
+                let parts: Vec<&str> = id_str.split('_').collect();
+                if parts.len() >= 2 {
+                    let vert_id = parts[1];
+                    let side = parts.get(2).cloned().unwrap_or("");
+                    if let Some(node_id) = bone_map.get(vert_id) {
+                        pos = topology.node_position(*node_id).unwrap_or(pos);
+                        if side == "L" { pos.x -= 0.05; }
+                        else { pos.x += 0.05; }
+                    }
                 }
             } else if id_str.starts_with("CN_") {
                 if let Some(node_id) = bone_map.get("Occipital") {
                     pos = topology.node_position(*node_id).unwrap_or(pos);
+                    if id_str.contains("_L") { pos.x -= 0.05; }
+                    else { pos.x += 0.05; }
                     pos.z += 0.05;
                 }
+            } else if id_str.starts_with("Brain_") {
+                 pos = Vector3 { x: 0.0, y: 2.1, z: 0.0 };
             }
 
             let id = topology.add_node(format!("CPG_{}", id_str), pos, None);
@@ -172,12 +178,18 @@ impl CompilerPipeline {
                 ValidationError::MissingIdentifier(receptor.muscle_id.clone())
             })?;
             
-            // Receptors provide feedback to the nerve that controls the muscle (simplified)
-            // For now, let's find a matching nerve or use a fallback.
-            if let Some(target_cpg_id) = cpg_map.values().next() {
+            // Receptors provide feedback back to the Nerve.
+            // Simplified: Find a nerve with similar name/side
+            let side = if receptor.id.contains("_L") { "_L" } else { "_R" };
+            let target_cpg_id = cpg_map.keys()
+                .find(|k| k.contains(side))
+                .and_then(|k| cpg_map.get(k))
+                .or_else(|| cpg_map.values().next());
+
+            if let Some(tid) = target_cpg_id {
                 topology.add_edge(
                     *m_node_id,
-                    *target_cpg_id,
+                    *tid,
                     receptor.id.clone(),
                     EdgeType::Sensory,
                 );

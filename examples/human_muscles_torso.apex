@@ -1,16 +1,16 @@
 // === MUSCLES: TORSO, SPINE & NECK (Deep Fidelity) ===
 
 // --- ABDOMINAL WALL ---
-muscle L_RectusAbd     { source = Sternum;   target = Pelvis;    max_force = 1200.0 Nm; }
-muscle R_RectusAbd     { source = Sternum;   target = Pelvis;    max_force = 1200.0 Nm; }
-muscle L_ExtOblique    { source = L_Rib6;    target = Pelvis;    max_force = 800.0 Nm; }
-muscle R_ExtOblique    { source = R_Rib6;    target = Pelvis;    max_force = 800.0 Nm; }
-muscle L_IntOblique    { source = L_Rib10;   target = Pelvis;    max_force = 700.0 Nm; }
-muscle R_IntOblique    { source = R_Rib10;   target = Pelvis;    max_force = 700.0 Nm; }
-muscle L_TransAbd      { source = L1;        target = Pelvis;    max_force = 600.0 Nm; }
-muscle R_TransAbd      { source = L1;        target = Pelvis;    max_force = 600.0 Nm; }
+muscle L_RectusAbd     { source = Sternum;      target = L_Innominate; max_force = 1200.0 Nm; }
+muscle R_RectusAbd     { source = Sternum;      target = R_Innominate; max_force = 1200.0 Nm; }
+muscle L_ExtOblique    { source = L_Rib6;       target = L_Innominate; max_force = 800.0 Nm; }
+muscle R_ExtOblique    { source = R_Rib6;       target = R_Innominate; max_force = 800.0 Nm; }
+muscle L_IntOblique    { source = L_Rib10;      target = L_Innominate; max_force = 700.0 Nm; }
+muscle R_IntOblique    { source = R_Rib10;      target = R_Innominate; max_force = 700.0 Nm; }
+muscle L_TransAbd      { source = L1;           target = L_Innominate; max_force = 600.0 Nm; }
+muscle R_TransAbd      { source = L1;           target = R_Innominate; max_force = 600.0 Nm; }
 
-// --- INTERCOSTALS (Breathing Stability - 12 per side) ---
+// --- INTERCOSTALS (Breathing Stability - 11 pairs) ---
 muscle L_IntCost_1  { source = L_Rib1;  target = L_Rib2;  max_force = 100.0 Nm; }
 muscle L_IntCost_2  { source = L_Rib2;  target = L_Rib3;  max_force = 100.0 Nm; }
 muscle L_IntCost_3  { source = L_Rib3;  target = L_Rib4;  max_force = 100.0 Nm; }
@@ -45,8 +45,8 @@ muscle R_Erector_C     { source = T6;        target = C4;        max_force = 800
 
 muscle L_Masseter      { source = Zygomatic_L; target = Mandible; max_force = 800.0 Nm; }
 muscle R_Masseter      { source = Zygomatic_R; target = Mandible; max_force = 800.0 Nm; }
-muscle L_Temporalis    { source = Temporal_L; target = Mandible; max_force = 600.0 Nm; }
-muscle R_Temporalis    { source = Temporal_R; target = Mandible; max_force = 600.0 Nm; }
+muscle L_Temporalis    { source = Temporal_L;  target = Mandible; max_force = 600.0 Nm; }
+muscle R_Temporalis    { source = Temporal_R;  target = Mandible; max_force = 600.0 Nm; }
 
 // --- CHEST & SHOULDERS ---
 muscle L_PectoralisMaj { source = Sternum;   target = L_Humerus; max_force = 2000.0 Nm; }
