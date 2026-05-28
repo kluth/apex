@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Direct-Vector Anatomy</title>
+    <title>APEX Live Anatomy</title>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; font-family: 'Courier New', monospace; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
-            position: absolute; top: 10px; left: 10px; color: #0f0; z-index: 10; 
-            background: rgba(0,0,0,0.85); padding: 15px; border-left: 3px solid #0f0;
+            position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 100; 
+            background: rgba(0,0,0,0.85); padding: 20px; border-left: 4px solid #0f0;
+            box-shadow: 0 0 20px rgba(0,255,0,0.2);
             pointer-events: none;
         }
-        .stat { color: #888; font-size: 0.9em; }
-        .val { color: #fff; }
+        .title { font-weight: bold; font-size: 1.4em; letter-spacing: 2px; margin-bottom: 10px; display: block; }
+        .stat { color: #666; font-size: 0.85em; text-transform: uppercase; }
+        .val { color: #fff; font-family: monospace; font-size: 1.1em; }
+        #hot-indicator { 
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+            background: #0f0; margin-right: 10px; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
     <div id="info">
-        <b>APEX :: DIRECT-VECTOR VIEW</b><br>
-        <span class="stat">Model:</span> <span class="val">human_skeleton.glb</span><br>
-        <span class="stat">Status:</span> <span id="status" class="val">INIT</span><br>
+        <span class="title"><span id="hot-indicator"></span>APEX :: LIVE</span>
+        <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
+        <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
         <span class="stat">Points:</span> <span id="points" class="val">0</span>
     </div>
     
@@ -39,89 +46,89 @@
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
-        camera.position.set(1.5, 1.5, 2.5);
+        camera.position.set(2, 2, 4);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.GridHelper(10, 10, 0x00ff00, 0x222222));
-        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-        const light = new THREE.DirectionalLight(0xffffff, 1.5);
-        light.position.set(5, 10, 5);
-        scene.add(light);
-
-        // ANATOMICAL VECTOR MAP (Explicit point-to-point connections)
-        const connections = [
-            ["Pelvis", "Spine_Low"], ["Spine_Low", "Chest"], ["Chest", "Neck"], ["Neck", "Head"],
-            ["Chest", "L_Clavicle"], ["L_Clavicle", "L_Shoulder"], ["L_Shoulder", "L_Elbow"], ["L_Elbow", "L_Wrist"], ["L_Wrist", "L_Hand"],
-            ["Chest", "R_Clavicle"], ["R_Clavicle", "R_Shoulder"], ["R_Shoulder", "R_Elbow"], ["R_Elbow", "R_Wrist"], ["R_Wrist", "R_Hand"],
-            ["Pelvis", "L_Hip"], ["L_Hip", "L_Knee"], ["L_Knee", "L_Ankle"], ["L_Ankle", "L_Foot"],
-            ["Pelvis", "R_Hip"], ["R_Hip", "R_Knee"], ["R_Knee", "R_Ankle"], ["R_Ankle", "R_Foot"]
-        ];
+        scene.add(new THREE.GridHelper(10, 10, 0x00ff00, 0x111111));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const spotLight = new THREE.SpotLight(0xffffff, 200);
+        spotLight.position.set(5, 10, 5);
+        scene.add(spotLight);
 
         const loader = new GLTFLoader();
-        const glbPath = window.location.pathname.endsWith('viewer.html') ? '../human_skeleton.glb' : './human_skeleton.glb';
+        let currentModel = null;
+        let visualGroup = new THREE.Group();
+        scene.add(visualGroup);
 
-        loader.load(glbPath, (gltf) => {
-            document.getElementById('status').innerText = "OK";
-            const model = gltf.scene;
-
-            // Discovery Pass: Build absolute point map from GLTF nodes
-            const pointMap = new Map();
-            model.traverse(n => {
-                if (n.isObject3D && n.name.startsWith("APEX_NODE_")) {
-                    const id = n.name.replace("APEX_NODE_", "");
-                    pointMap.set(id, n.position.clone());
+        async function loadModel() {
+            const glbPath = '../human_skeleton.glb?t=' + Date.now();
+            
+            loader.load(glbPath, (gltf) => {
+                // Clear previous
+                while(visualGroup.children.length > 0) {
+                    visualGroup.remove(visualGroup.children[0]);
                 }
+                if (currentModel) scene.remove(currentModel);
+
+                currentModel = gltf.scene;
+                scene.add(currentModel);
+                currentModel.updateMatrixWorld(true);
+
+                const apexNodes = [];
+                currentModel.traverse(n => {
+                    if (n.isObject3D && n.name.startsWith("APEX_NODE_")) apexNodes.push(n);
+                });
+
+                document.getElementById('points').innerText = apexNodes.length;
+                document.getElementById('status').innerText = "OK";
+                document.getElementById('status').style.color = "#0f0";
+
+                const jointGeom = new THREE.SphereGeometry(0.025, 12, 12);
+                const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
+                const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+                apexNodes.forEach(node => {
+                    const worldPos = new THREE.Vector3();
+                    node.getWorldPosition(worldPos);
+
+                    const marker = new THREE.Mesh(jointGeom, jointMat);
+                    marker.position.copy(worldPos);
+                    visualGroup.add(marker);
+
+                    const bioChildren = node.children.filter(c => c.name && c.name.startsWith("APEX_NODE_"));
+                    bioChildren.forEach(child => {
+                        const childWorldPos = new THREE.Vector3();
+                        child.getWorldPosition(childWorldPos);
+                        const dir = childWorldPos.clone().sub(worldPos);
+                        const len = dir.length();
+                        if (len > 0) {
+                            const boneGeom = new THREE.CylinderGeometry(0.012, 0.012, len, 6);
+                            boneGeom.translate(0, len / 2, 0);
+                            const bone = new THREE.Mesh(boneGeom, boneMat);
+                            bone.position.copy(worldPos);
+                            bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                            visualGroup.add(bone);
+                        }
+                    });
+                });
+
+            }, undefined, (e) => {
+                document.getElementById('status').innerText = "WAITING";
+                document.getElementById('status').style.color = "#ff0";
             });
+        }
 
-            document.getElementById('points').innerText = pointMap.size;
+        // Initial Load
+        loadModel();
 
-            const skeletonGroup = new THREE.Group();
-            scene.add(skeletonGroup);
-
-            const jointGeom = new THREE.SphereGeometry(0.025);
-            const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x002200 });
-            const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.2 });
-
-            // 1. Draw Joints (at absolute coordinates)
-            pointMap.forEach((pos, id) => {
-                const sphere = new THREE.Mesh(jointGeom, jointMat);
-                sphere.position.copy(pos);
-                skeletonGroup.add(sphere);
-            });
-
-            // 2. Draw Bones (Vectors between absolute coordinates)
-            connections.forEach(([startId, endId]) => {
-                const startPos = pointMap.get(startId);
-                const endPos = pointMap.get(endId);
-
-                if (startPos && endPos) {
-                    const dir = endPos.clone().sub(startPos);
-                    const len = dir.length();
-                    if (len > 0) {
-                        const boneGeom = new THREE.CylinderGeometry(0.012, 0.012, len, 6);
-                        boneGeom.translate(0, len / 2, 0);
-                        const bone = new THREE.Mesh(boneGeom, boneMat);
-                        bone.position.copy(startPos);
-                        bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-                        skeletonGroup.add(bone);
-                    }
-                }
-            });
-
-            // Auto-focus camera on the new skeleton group
-            const box = new THREE.Box3().setFromObject(skeletonGroup);
-            const center = box.getCenter(new THREE.Vector3());
-            controls.target.set(0, center.y, 0);
-            controls.update();
-
-        }, undefined, e => { 
-            document.getElementById('status').innerText = "FAIL"; 
-            console.error(e);
-        });
+        // HOT RELOAD POLLING
+        // In a production environment, we'd use WebSockets. 
+        // For this high-fidelity CLI environment, we poll the file every 2 seconds.
+        setInterval(loadModel, 2000);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;

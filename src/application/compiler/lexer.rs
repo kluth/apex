@@ -6,9 +6,11 @@ pub enum Token {
     Bone,
     Joint,
     Muscle,
+    Include,
 
     // Identifiers and Literals
     Identifier(String),
+    StringLiteral(String),
     Number(f64),
 
     // Units
@@ -53,7 +55,11 @@ impl<'a> Lexer<'a> {
             return self.read_identifier();
         }
 
-        if current_char.is_ascii_digit() || current_char == '.' {
+        if current_char == '"' {
+            return self.read_string();
+        }
+
+        if current_char.is_ascii_digit() || current_char == '.' || current_char == '-' {
             return self.read_number();
         }
 
@@ -108,6 +114,7 @@ impl<'a> Lexer<'a> {
             "bone" => Token::Bone,
             "joint" => Token::Joint,
             "muscle" => Token::Muscle,
+            "include" => Token::Include,
             "kg" => Token::Kg,
             "m" => Token::M,
             "Nm" => Token::Nm,
@@ -118,6 +125,12 @@ impl<'a> Lexer<'a> {
 
     fn read_number(&mut self) -> Token {
         let start = self.pos;
+        
+        // Handle leading minus
+        if self.input[self.pos..].starts_with('-') {
+            self.pos += 1;
+        }
+
         while self.pos < self.input.len() {
             let ch = self.input[self.pos..].chars().next().unwrap();
             if ch.is_ascii_digit() || ch == '.' {
@@ -129,6 +142,23 @@ impl<'a> Lexer<'a> {
         let number_str = &self.input[start..self.pos];
         Token::Number(number_str.parse().unwrap_or(0.0))
     }
+
+    fn read_string(&mut self) -> Token {
+        self.pos += 1; // Skip opening quote
+        let start = self.pos;
+        while self.pos < self.input.len() {
+            let ch = self.input[self.pos..].chars().next().unwrap();
+            if ch == '"' {
+                break;
+            }
+            self.pos += ch.len_utf8();
+        }
+        let string_val = &self.input[start..self.pos];
+        if self.pos < self.input.len() {
+            self.pos += 1; // Skip closing quote
+        }
+        Token::StringLiteral(string_val.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -137,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_lexer_tokenization() {
-        let input = "organism Biped { bone Femur { mass = 2.0 kg; } }";
+        let input = "organism Biped { bone Femur { mass = 2.0 kg; position = (-0.5, 1.0, 0.0); } }";
         let mut lexer = Lexer::new(input);
 
         assert_eq!(lexer.next_token(), Token::Organism);
@@ -151,6 +181,18 @@ mod tests {
         assert_eq!(lexer.next_token(), Token::Number(2.0));
         assert_eq!(lexer.next_token(), Token::Kg);
         assert_eq!(lexer.next_token(), Token::Semicolon);
+        
+        assert_eq!(lexer.next_token(), Token::Identifier("position".to_string()));
+        assert_eq!(lexer.next_token(), Token::Equal);
+        assert_eq!(lexer.next_token(), Token::ParenOpen);
+        assert_eq!(lexer.next_token(), Token::Number(-0.5));
+        assert_eq!(lexer.next_token(), Token::Comma);
+        assert_eq!(lexer.next_token(), Token::Number(1.0));
+        assert_eq!(lexer.next_token(), Token::Comma);
+        assert_eq!(lexer.next_token(), Token::Number(0.0));
+        assert_eq!(lexer.next_token(), Token::ParenClose);
+        assert_eq!(lexer.next_token(), Token::Semicolon);
+
         assert_eq!(lexer.next_token(), Token::BraceClose);
         assert_eq!(lexer.next_token(), Token::BraceClose);
         assert_eq!(lexer.next_token(), Token::Eof);

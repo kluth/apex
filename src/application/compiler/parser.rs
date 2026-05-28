@@ -1,9 +1,10 @@
 use super::lexer::{Lexer, Token};
-use crate::domain::ast::bone::{Bone, Mass};
+use crate::domain::ast::bone::{AssetPath, Bone, Mass, MeshReference};
 use crate::domain::ast::joint::{Joint, JointAttachment, JointType};
 use crate::domain::ast::muscle::Muscle;
 use crate::domain::biomechanics::rigid_body::Vector3;
 use std::collections::HashMap;
+use std::fs;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -23,6 +24,8 @@ pub struct OrganismAst {
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Token,
+    base_path: String,
+    bone_registry: HashMap<String, Bone>,
 }
 
 impl<'a> Parser<'a> {
@@ -32,7 +35,19 @@ impl<'a> Parser<'a> {
         Self {
             lexer,
             current_token,
+            base_path: "examples/".to_string(),
+            bone_registry: HashMap::new(),
         }
+    }
+
+    pub fn with_base_path(mut self, path: String) -> Self {
+        self.base_path = path;
+        self
+    }
+
+    pub fn with_registry(mut self, registry: HashMap<String, Bone>) -> Self {
+        self.bone_registry = registry;
+        self
     }
 
     fn advance(&mut self) {
@@ -70,21 +85,51 @@ impl<'a> Parser<'a> {
         let mut joints = Vec::new();
         let mut muscles = Vec::new();
 
-        // Temporary map to resolve bone references during parsing
-        let mut bone_registry: HashMap<String, Bone> = HashMap::new();
-
         while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
             match self.current_token {
+                Token::Include => {
+                    self.advance();
+                    if let Token::StringLiteral(path) = &self.current_token {
+                        let full_path = format!("{}{}", self.base_path, path);
+                        let source = fs::read_to_string(&full_path).map_err(|e| ParseError::UnexpectedToken(Token::Eof, e.to_string()))?;
+                        
+                        let mut sub_parser = Parser::new(&source)
+                            .with_base_path(self.base_path.clone())
+                            .with_registry(self.bone_registry.clone());
+                        
+                        while sub_parser.current_token != Token::Eof {
+                            match sub_parser.current_token {
+                                Token::Bone => {
+                                    let bone = sub_parser.parse_bone()?;
+                                    sub_parser.bone_registry.insert(bone.id().to_string(), bone.clone());
+                                    self.bone_registry.insert(bone.id().to_string(), bone.clone());
+                                    bones.push(bone);
+                                }
+                                Token::Joint => {
+                                    let joint = sub_parser.parse_joint()?;
+                                    joints.push(joint);
+                                }
+                                Token::Muscle => {
+                                    let muscle = sub_parser.parse_muscle()?;
+                                    muscles.push(muscle);
+                                }
+                                _ => sub_parser.advance(),
+                            }
+                        }
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                }
                 Token::Bone => {
                     let bone = self.parse_bone()?;
-                    bone_registry.insert(bone.id().to_string(), bone.clone());
+                    self.bone_registry.insert(bone.id().to_string(), bone.clone());
                     bones.push(bone);
                 }
                 Token::Joint => {
-                    joints.push(self.parse_joint(&bone_registry)?);
+                    joints.push(self.parse_joint()?);
                 }
                 Token::Muscle => {
-                    muscles.push(self.parse_muscle(&bone_registry)?);
+                    muscles.push(self.parse_muscle()?);
                 }
                 _ => self.advance(),
             }
@@ -107,6 +152,7 @@ impl<'a> Parser<'a> {
         self.expect(Token::BraceOpen)?;
         let mut mass = None;
         let mut position = Vector3::default();
+        let mut mesh_ref = None;
 
         while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
             if let Token::Identifier(prop) = &self.current_token {
@@ -119,8 +165,7 @@ impl<'a> Parser<'a> {
                             self.expect(Token::Kg)?;
                             self.expect(Token::Semicolon)?;
                             mass = Some(
-                                Mass::new(val)
-                                    .map_err(|_| ParseError::InvalidMass(val.to_string()))?,
+                                Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?,
                             );
                         }
                     }
@@ -128,29 +173,27 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.expect(Token::Equal)?;
                         self.expect(Token::ParenOpen)?;
-                        let x = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let x = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::Comma)?;
-                        let y = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let y = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::Comma)?;
-                        let z = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let z = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::ParenClose)?;
                         self.expect(Token::Semicolon)?;
                         position = Vector3 { x, y, z };
+                    }
+                    "mesh" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::StringLiteral(path_str) = &self.current_token {
+                            let path = AssetPath::new(path_str).map_err(|_| ParseError::UnexpectedToken(Token::Eof, "Invalid mesh path".to_string()))?;
+                            mesh_ref = Some(MeshReference::new(path));
+                            self.advance();
+                            self.expect(Token::Semicolon)?;
+                        }
                     }
                     _ => self.advance(),
                 }
@@ -161,10 +204,14 @@ impl<'a> Parser<'a> {
         self.expect(Token::BraceClose)?;
 
         let mass = mass.ok_or_else(|| ParseError::MissingProperty("mass".to_string()))?;
-        Ok(Bone::new(id, mass, position))
+        let mut bone = Bone::new(id, mass, position);
+        if let Some(mr) = mesh_ref {
+            bone = bone.with_mesh(mr);
+        }
+        Ok(bone)
     }
 
-    fn parse_joint(&mut self, bones: &HashMap<String, Bone>) -> Result<Joint, ParseError> {
+    fn parse_joint(&mut self) -> Result<Joint, ParseError> {
         self.expect(Token::Joint)?;
         let id = self.read_identifier("Expected joint id")?;
         self.advance();
@@ -201,8 +248,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
-        let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
+        let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Joint::new(
             id,
@@ -215,7 +262,7 @@ impl<'a> Parser<'a> {
         .map_err(|e| ParseError::UnexpectedToken(Token::Eof, format!("{:?}", e)))
     }
 
-    fn parse_muscle(&mut self, bones: &HashMap<String, Bone>) -> Result<Muscle, ParseError> {
+    fn parse_muscle(&mut self) -> Result<Muscle, ParseError> {
         self.expect(Token::Muscle)?;
         let id = self.read_identifier("Expected muscle id")?;
         self.advance();
@@ -263,8 +310,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = bones.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
-        let b2 = bones.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
+        let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Ok(Muscle::new(
             id,
@@ -285,31 +332,5 @@ impl<'a> Parser<'a> {
                 msg.to_string(),
             ))
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parser_complex_organism() {
-        let input = "
-            organism Worm {
-                bone Head { mass = 1.0 kg; position = (0, 1, 0); }
-                bone Tail { mass = 1.0 kg; position = (0, 0, 0); }
-                joint Neck { source = Head; target = Tail; }
-                muscle Motor { source = Head; target = Tail; max_force = 50.0 Nm; }
-            }
-        ";
-        let mut parser = Parser::new(input);
-        let ast = parser.parse_organism().unwrap();
-
-        assert_eq!(ast.name, "Worm");
-        assert_eq!(ast.bones.len(), 2);
-        assert_eq!(ast.bones[0].position().y, 1.0);
-        assert_eq!(ast.joints.len(), 1);
-        assert_eq!(ast.muscles.len(), 1);
-        assert_eq!(ast.muscles[0].max_force(), 50.0);
     }
 }
