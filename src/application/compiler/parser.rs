@@ -85,7 +85,28 @@ impl<'a> Parser<'a> {
         let mut joints = Vec::new();
         let mut muscles = Vec::new();
 
-        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, false)?;
+
+        self.expect(Token::BraceClose)?;
+        Ok(OrganismAst {
+            name,
+            bones,
+            joints,
+            muscles,
+        })
+    }
+
+    /// Internal recursive method to parse bones, joints, muscles, and nested includes.
+    fn parse_body_elements(
+        &mut self,
+        bones: &mut Vec<Bone>,
+        joints: &mut Vec<Joint>,
+        muscles: &mut Vec<Muscle>,
+        is_include: bool,
+    ) -> Result<(), ParseError> {
+        let terminal = if is_include { Token::Eof } else { Token::BraceClose };
+
+        while self.current_token != terminal && self.current_token != Token::Eof {
             match self.current_token {
                 Token::Include => {
                     self.advance();
@@ -98,36 +119,21 @@ impl<'a> Parser<'a> {
                             .with_base_path(self.base_path.clone())
                             .with_registry(self.bone_registry.clone());
 
-                        while sub_parser.current_token != Token::Eof {
-                            match sub_parser.current_token {
-                                Token::Bone => {
-                                    let bone = sub_parser.parse_bone()?;
-                                    sub_parser
-                                        .bone_registry
-                                        .insert(bone.id().to_string(), bone.clone());
-                                    self.bone_registry
-                                        .insert(bone.id().to_string(), bone.clone());
-                                    bones.push(bone);
-                                }
-                                Token::Joint => {
-                                    let joint = sub_parser.parse_joint()?;
-                                    joints.push(joint);
-                                }
-                                Token::Muscle => {
-                                    let muscle = sub_parser.parse_muscle()?;
-                                    muscles.push(muscle);
-                                }
-                                _ => sub_parser.advance(),
-                            }
+                        // Recursively parse elements from the included file
+                        sub_parser.parse_body_elements(bones, joints, muscles, true)?;
+                        
+                        // Sync registry back from sub-parser
+                        for b in &sub_parser.bone_registry {
+                            self.bone_registry.insert(b.0.clone(), b.1.clone());
                         }
+
                         self.advance();
                         self.expect(Token::Semicolon)?;
                     }
                 }
                 Token::Bone => {
                     let bone = self.parse_bone()?;
-                    self.bone_registry
-                        .insert(bone.id().to_string(), bone.clone());
+                    self.bone_registry.insert(bone.id().to_string(), bone.clone());
                     bones.push(bone);
                 }
                 Token::Joint => {
@@ -139,14 +145,7 @@ impl<'a> Parser<'a> {
                 _ => self.advance(),
             }
         }
-
-        self.expect(Token::BraceClose)?;
-        Ok(OrganismAst {
-            name,
-            bones,
-            joints,
-            muscles,
-        })
+        Ok(())
     }
 
     fn parse_bone(&mut self) -> Result<Bone, ParseError> {
@@ -170,8 +169,7 @@ impl<'a> Parser<'a> {
                             self.expect(Token::Kg)?;
                             self.expect(Token::Semicolon)?;
                             mass = Some(
-                                Mass::new(val)
-                                    .map_err(|_| ParseError::InvalidMass(val.to_string()))?,
+                                Mass::new(val).map_err(|_| ParseError::InvalidMass(val.to_string()))?,
                             );
                         }
                     }
@@ -179,25 +177,13 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.expect(Token::Equal)?;
                         self.expect(Token::ParenOpen)?;
-                        let x = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let x = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::Comma)?;
-                        let y = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let y = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::Comma)?;
-                        let z = if let Token::Number(val) = self.current_token {
-                            val
-                        } else {
-                            0.0
-                        };
+                        let z = if let Token::Number(val) = self.current_token { val } else { 0.0 };
                         self.advance();
                         self.expect(Token::ParenClose)?;
                         self.expect(Token::Semicolon)?;
@@ -207,12 +193,7 @@ impl<'a> Parser<'a> {
                         self.advance();
                         self.expect(Token::Equal)?;
                         if let Token::StringLiteral(path_str) = &self.current_token {
-                            let path = AssetPath::new(path_str).map_err(|_| {
-                                ParseError::UnexpectedToken(
-                                    Token::Eof,
-                                    "Invalid mesh path".to_string(),
-                                )
-                            })?;
+                            let path = AssetPath::new(path_str).map_err(|_| ParseError::UnexpectedToken(Token::Eof, "Invalid mesh path".to_string()))?;
                             mesh_ref = Some(MeshReference::new(path));
                             self.advance();
                             self.expect(Token::Semicolon)?;
@@ -271,14 +252,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = self
-            .bone_registry
-            .get(&s_id)
-            .ok_or(ParseError::BoneNotFound(s_id))?;
-        let b2 = self
-            .bone_registry
-            .get(&t_id)
-            .ok_or(ParseError::BoneNotFound(t_id))?;
+        let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Joint::new(
             id,
@@ -339,14 +314,8 @@ impl<'a> Parser<'a> {
         let s_id = source.ok_or_else(|| ParseError::MissingProperty("source".to_string()))?;
         let t_id = target.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
 
-        let b1 = self
-            .bone_registry
-            .get(&s_id)
-            .ok_or(ParseError::BoneNotFound(s_id))?;
-        let b2 = self
-            .bone_registry
-            .get(&t_id)
-            .ok_or(ParseError::BoneNotFound(t_id))?;
+        let b1 = self.bone_registry.get(&s_id).ok_or(ParseError::BoneNotFound(s_id))?;
+        let b2 = self.bone_registry.get(&t_id).ok_or(ParseError::BoneNotFound(t_id))?;
 
         Ok(Muscle::new(
             id,
