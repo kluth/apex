@@ -18,6 +18,12 @@ pub enum ParseError {
     CpgNotFound(String),
 }
 
+pub struct ReceptorAst {
+    pub id: String,
+    pub muscle_id: String,
+    pub receptor_type: String,
+}
+
 pub struct OrganismAst {
     pub name: String,
     pub bones: Vec<Bone>,
@@ -25,6 +31,7 @@ pub struct OrganismAst {
     pub muscles: Vec<Muscle>,
     pub cpgs: Vec<Cpg>,
     pub synapses: Vec<Synapse>,
+    pub receptors: Vec<ReceptorAst>,
 }
 
 pub struct Parser<'a> {
@@ -103,8 +110,9 @@ impl<'a> Parser<'a> {
         let mut muscles = Vec::new();
         let mut cpgs = Vec::new();
         let mut synapses = Vec::new();
+        let mut receptors = Vec::new();
 
-        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, false)?;
+        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, &mut receptors, false)?;
 
         self.expect(Token::BraceClose)?;
         Ok(OrganismAst {
@@ -114,6 +122,7 @@ impl<'a> Parser<'a> {
             muscles,
             cpgs,
             synapses,
+            receptors,
         })
     }
 
@@ -124,6 +133,7 @@ impl<'a> Parser<'a> {
         muscles: &mut Vec<Muscle>,
         cpgs: &mut Vec<Cpg>,
         synapses: &mut Vec<Synapse>,
+        receptors: &mut Vec<ReceptorAst>,
         is_include: bool,
     ) -> Result<(), ParseError> {
         let terminal = if is_include { Token::Eof } else { Token::BraceClose };
@@ -145,7 +155,7 @@ impl<'a> Parser<'a> {
                                 self.cpg_registry.clone(),
                             );
 
-                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, true)?;
+                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, receptors, true)?;
                         
                         // Sync registries
                         self.bone_registry.extend(sub_parser.bone_registry);
@@ -176,6 +186,9 @@ impl<'a> Parser<'a> {
                 }
                 Token::Synapse => {
                     synapses.push(self.parse_synapse()?);
+                }
+                Token::Receptor => {
+                    receptors.push(self.parse_receptor()?);
                 }
                 _ => self.advance(),
             }
@@ -428,6 +441,46 @@ impl<'a> Parser<'a> {
         let muscle = self.muscle_registry.get(&t_id).ok_or(ParseError::MuscleNotFound(t_id))?;
 
         Ok(Synapse::new(id, cpg, muscle, weight))
+    }
+
+    fn parse_receptor(&mut self) -> Result<ReceptorAst, ParseError> {
+        self.expect(Token::Receptor)?;
+        let id = self.read_identifier("Expected receptor id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut target_muscle = None;
+        let mut r_type = "Spindle".to_string();
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "target" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        target_muscle = Some(self.read_identifier("Expected muscle id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "type" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Identifier(t) = &self.current_token {
+                            r_type = t.clone();
+                            self.advance();
+                            self.expect(Token::Semicolon)?;
+                        }
+                    }
+                    _ => self.advance(),
+                }
+            } else {
+                self.advance();
+            }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let muscle_id = target_muscle.ok_or_else(|| ParseError::MissingProperty("target".to_string()))?;
+        Ok(ReceptorAst { id, muscle_id, receptor_type: r_type })
     }
 
     fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {

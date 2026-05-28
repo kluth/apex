@@ -8,6 +8,7 @@ pub enum Token {
     Muscle,
     Cpg,
     Synapse,
+    Receptor,
     Include,
 
     // Identifiers and Literals
@@ -119,6 +120,7 @@ impl<'a> Lexer<'a> {
             "muscle" => Token::Muscle,
             "cpg" => Token::Cpg,
             "synapse" => Token::Synapse,
+            "receptor" => Token::Receptor,
             "include" => Token::Include,
             "kg" => Token::Kg,
             "m" => Token::M,

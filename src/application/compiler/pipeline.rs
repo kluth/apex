@@ -1,4 +1,4 @@
-use crate::application::compiler::parser::{ParseError, Parser};
+use crate::application::compiler::parser::{ParseError, Parser, ReceptorAst};
 use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
 use crate::domain::air::topology::{EdgeType, NodeId, Topology};
 use crate::domain::ast::bone::Bone;
@@ -50,7 +50,7 @@ impl CompilerPipeline {
         let ast = parser.parse_organism()?;
 
         // 2. Validate & Lower
-        self.lower(ast.bones, ast.joints, ast.muscles, ast.cpgs, ast.synapses, vec![])
+        self.lower(ast.bones, ast.joints, ast.muscles, ast.cpgs, ast.synapses, ast.receptors, vec![])
             .map_err(Into::into)
     }
 
@@ -62,6 +62,7 @@ impl CompilerPipeline {
         muscles: Vec<Muscle>,
         cpgs: Vec<Cpg>,
         synapses: Vec<Synapse>,
+        receptors: Vec<ReceptorAst>,
         _skins: Vec<Skin>,
     ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
@@ -148,6 +149,23 @@ impl CompilerPipeline {
                 synapse.id().to_string(),
                 EdgeType::Neural,
             );
+        }
+
+        // Receptors become Sensory Edges
+        for receptor in receptors {
+            let m_node_id = muscle_map.get(&receptor.muscle_id).ok_or_else(|| {
+                ValidationError::MissingIdentifier(receptor.muscle_id.clone())
+            })?;
+            
+            // Pick a random CPG as target for feedback (simplified)
+            if let Some(target_cpg_id) = cpg_map.values().next() {
+                topology.add_edge(
+                    *m_node_id,
+                    *target_cpg_id,
+                    receptor.id.clone(),
+                    EdgeType::Sensory,
+                );
+            }
         }
 
         Ok(topology)

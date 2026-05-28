@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Neural Layer</title>
+    <title>APEX High-Fidelity Organism</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -22,16 +22,18 @@
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
         .muscle-val { color: #f44; }
         .neural-val { color: #44f; }
+        .sensory-val { color: #f4f; }
     </style>
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: NEURAL</span>
+        <span class="title"><span id="hot-indicator"></span>APEX :: SENTIENT</span>
         <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
         <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
         <span class="stat">Bones:</span> <span id="points" class="val">0</span><br>
         <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span><br>
-        <span class="stat">Synapses:</span> <span id="synapses" class="val neural-val">0</span>
+        <span class="stat">Synapses:</span> <span id="synapses" class="val neural-val">0</span><br>
+        <span class="stat">Sensors:</span> <span id="sensors" class="val sensory-val">0</span>
     </div>
     
     <script type="importmap">
@@ -68,12 +70,12 @@
         let visualGroup = new THREE.Group();
         scene.add(visualGroup);
 
-        // Geometries & Materials
-        const jointGeom = new THREE.SphereGeometry(0.015, 8, 8);
-        const cpgGeom = new THREE.SphereGeometry(0.025, 12, 12);
+        const jointGeom = new THREE.SphereGeometry(0.012, 8, 8);
+        const cpgGeom = new THREE.SphereGeometry(0.02, 12, 12);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
         const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x330000 });
-        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000033, transparent: true, opacity: 0.6 });
+        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000033, transparent: true, opacity: 0.5 });
+        const sensoryMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0x330033, transparent: true, opacity: 0.4 });
         const cpgMat = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0x333300 });
         const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
@@ -111,6 +113,7 @@
                 const sceneData = gltf.scene.userData;
                 let muscleCount = 0;
                 let synapseCount = 0;
+                let sensorCount = 0;
 
                 if (sceneData && sceneData.links) {
                     sceneData.links.forEach(link => {
@@ -135,8 +138,12 @@
                                     muscleCount++;
                                 } else if (link.type === "synapse") {
                                     mat = neuralMat;
-                                    scale = 0.5;
+                                    scale = 0.4;
                                     synapseCount++;
+                                } else if (link.type === "feedback") {
+                                    mat = sensoryMat;
+                                    scale = 0.3;
+                                    sensorCount++;
                                 }
 
                                 const mesh = new THREE.Mesh(baseCylinderGeom, mat);
@@ -150,8 +157,8 @@
                 }
                 document.getElementById('muscles').innerText = muscleCount;
                 document.getElementById('synapses').innerText = synapseCount;
+                document.getElementById('sensors').innerText = sensorCount;
 
-                // Markers & CPGs
                 nodeMap.forEach((node, name) => {
                     const worldPos = new THREE.Vector3();
                     node.getWorldPosition(worldPos);
@@ -161,7 +168,7 @@
                         marker.position.copy(worldPos);
                         visualGroup.add(marker);
                     } else if (name.startsWith("MUSCLE_NODE_")) {
-                        // Invisible helper
+                        // Tiny point for muscle center
                     } else {
                         const marker = new THREE.Mesh(jointGeom, jointMat);
                         marker.position.copy(worldPos);
