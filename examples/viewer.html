@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Myofascial Layer</title>
+    <title>APEX Absolute Stability</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -25,7 +25,7 @@
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: LIVE</span>
+        <span class="title"><span id="hot-indicator"></span>APEX :: ABSOLUTE</span>
         <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
         <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
         <span class="stat">Bones:</span> <span id="points" class="val">0</span><br>
@@ -66,12 +66,12 @@
         let visualGroup = new THREE.Group();
         scene.add(visualGroup);
 
-        const jointGeom = new THREE.SphereGeometry(0.02, 12, 12);
+        const jointGeom = new THREE.SphereGeometry(0.015, 12, 12);
         const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
         const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x330000 });
         const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
-        const baseCylinderGeom = new THREE.CylinderGeometry(0.012, 0.012, 1, 6);
+        const baseCylinderGeom = new THREE.CylinderGeometry(0.008, 0.012, 1, 6);
         baseCylinderGeom.translate(0, 0.5, 0);
 
         async function loadModel() {
@@ -102,41 +102,14 @@
                 document.getElementById('status').innerText = "OK";
                 document.getElementById('status').style.color = "#0f0";
 
-                // 1. Draw Joints & Structural Bones
-                nodeMap.forEach((node, name) => {
-                    const worldPos = new THREE.Vector3();
-                    node.getWorldPosition(worldPos);
-
-                    const marker = new THREE.Mesh(jointGeom, jointMat);
-                    marker.position.copy(worldPos);
-                    visualGroup.add(marker);
-
-                    node.children.forEach(child => {
-                        if (child.name.startsWith("APEX_NODE_")) {
-                            const childWorldPos = new THREE.Vector3();
-                            child.getWorldPosition(childWorldPos);
-                            const dir = childWorldPos.clone().sub(worldPos);
-                            const len = dir.length();
-                            if (len > 0) {
-                                const bone = new THREE.Mesh(baseCylinderGeom, boneMat);
-                                bone.position.copy(worldPos);
-                                bone.scale.set(1, len, 1);
-                                bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-                                visualGroup.add(bone);
-                            }
-                        }
-                    });
-                });
-
-                // 2. Draw Actuators (Muscles)
+                const sceneData = gltf.scene.userData;
                 let muscleCount = 0;
-                if (gltf.scenes[0].extras && gltf.scenes[0].extras.muscles) {
-                    const muscles = gltf.scenes[0].extras.muscles;
-                    muscleCount = muscles.length;
 
-                    muscles.forEach(m => {
-                        const sourceNode = nodeMap.get(m.source);
-                        const targetNode = nodeMap.get(m.target);
+                if (sceneData && sceneData.links) {
+                    sceneData.links.forEach(link => {
+                        const sourceNode = nodeMap.get(link.source);
+                        const targetNode = nodeMap.get(link.target);
+                        
                         if (sourceNode && targetNode) {
                             const sPos = new THREE.Vector3();
                             const tPos = new THREE.Vector3();
@@ -145,17 +118,31 @@
 
                             const dir = tPos.clone().sub(sPos);
                             const len = dir.length();
+                            
                             if (len > 0) {
-                                const muscleMesh = new THREE.Mesh(baseCylinderGeom, muscleMat);
-                                muscleMesh.position.copy(sPos);
-                                muscleMesh.scale.set(0.8, len, 0.8); // Slightly thinner than bone
-                                muscleMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-                                visualGroup.add(muscleMesh);
+                                const isMuscle = link.type === "muscle";
+                                const mat = isMuscle ? muscleMat : boneMat;
+                                if (isMuscle) muscleCount++;
+
+                                const mesh = new THREE.Mesh(baseCylinderGeom, mat);
+                                mesh.position.copy(sPos);
+                                mesh.scale.set(isMuscle ? 0.8 : 1, len, isMuscle ? 0.8 : 1);
+                                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                                visualGroup.add(mesh);
                             }
                         }
                     });
                 }
                 document.getElementById('muscles').innerText = muscleCount;
+
+                // Markers
+                nodeMap.forEach(node => {
+                    const worldPos = new THREE.Vector3();
+                    node.getWorldPosition(worldPos);
+                    const marker = new THREE.Mesh(jointGeom, jointMat);
+                    marker.position.copy(worldPos);
+                    visualGroup.add(marker);
+                });
 
             }, undefined, (e) => {
                 document.getElementById('status').innerText = "WAITING";
