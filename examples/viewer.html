@@ -3,26 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Anatomy Viewer</title>
+    <title>APEX Direct-Vector Anatomy</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { margin: 0; background: #050505; overflow: hidden; font-family: 'Courier New', monospace; }
         #info { 
-            position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 100; 
-            background: rgba(0,0,0,0.85); padding: 20px; border-left: 4px solid #0f0;
-            box-shadow: 0 0 20px rgba(0,255,0,0.2);
+            position: absolute; top: 10px; left: 10px; color: #0f0; z-index: 10; 
+            background: rgba(0,0,0,0.8); padding: 15px; border-left: 3px solid #0f0;
             pointer-events: none;
         }
-        .title { font-weight: bold; font-size: 1.4em; letter-spacing: 2px; margin-bottom: 10px; display: block; }
-        .stat { color: #666; font-size: 0.85em; text-transform: uppercase; }
-        .val { color: #fff; font-family: monospace; font-size: 1.1em; }
     </style>
 </head>
 <body>
     <div id="info">
-        <span class="title">APEX :: ANATOMY</span>
-        <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
-        <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Ready</span><br>
-        <span class="stat">Nodes:</span> <span id="nodeCount" class="val">0</span>
+        <b>APEX :: DIRECT-VECTOR VIEW</b><br>
+        Status: <span id="status">INIT</span><br>
+        Points: <span id="points">0</span>
     </div>
     
     <script type="importmap">
@@ -41,88 +36,94 @@
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
-        camera.position.set(2, 2, 4);
+        camera.position.set(2, 1.5, 3);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
-        // Environment
-        const grid = new THREE.GridHelper(20, 20, 0x00ff00, 0x111111);
-        scene.add(grid);
-        
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-        const spotLight = new THREE.SpotLight(0xffffff, 200);
-        spotLight.position.set(5, 10, 5);
-        scene.add(spotLight);
+        scene.add(new THREE.GridHelper(10, 10, 0x00ff00, 0x111111));
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const light = new THREE.DirectionalLight(0xffffff, 1.2);
+        light.position.set(5, 10, 5);
+        scene.add(light);
 
-        // Loader
+        // 1. ANATOMICAL CONNECTION MAP (The "Vector" approach)
+        const connections = [
+            ["Pelvis", "Spine_Low"], ["Spine_Low", "Chest"], ["Chest", "Neck"], ["Neck", "Head"],
+            ["Chest", "L_Clavicle"], ["L_Clavicle", "L_Shoulder"], ["L_Shoulder", "L_Elbow"], ["L_Elbow", "L_Wrist"], ["L_Wrist", "L_Hand"],
+            ["Chest", "R_Clavicle"], ["R_Clavicle", "R_Shoulder"], ["R_Shoulder", "R_Elbow"], ["R_Elbow", "R_Wrist"], ["R_Wrist", "R_Hand"],
+            ["Pelvis", "L_Hip"], ["L_Hip", "L_Knee"], ["L_Knee", "L_Ankle"], ["L_Ankle", "L_Foot"],
+            ["Pelvis", "R_Hip"], ["R_Hip", "R_Knee"], ["R_Knee", "R_Ankle"], ["R_Ankle", "R_Foot"]
+        ];
+
         const loader = new GLTFLoader();
-        // Unified path logic for local dev and GitHub Pages
         const glbPath = window.location.pathname.endsWith('viewer.html') ? '../human_skeleton.glb' : './human_skeleton.glb';
-        
-        loader.load(glbPath, (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
-            model.updateMatrixWorld(true);
 
-            // Discovery Phase (Non-recursive)
-            const apexNodes = [];
-            model.traverse(node => {
-                if (node.isObject3D && node.name.startsWith("APEX_NODE_")) {
-                    apexNodes.push(node);
+        loader.load(glbPath, (gltf) => {
+            document.getElementById('status').innerText = "OK";
+            const model = gltf.scene;
+
+            // Map IDs to their absolute Three.js nodes
+            const pointMap = new Map();
+            model.traverse(n => {
+                if (n.name.startsWith("APEX_NODE_")) {
+                    const cleanName = n.name.replace("APEX_NODE_", "");
+                    pointMap.set(cleanName, n);
                 }
             });
 
-            document.getElementById('nodeCount').innerText = apexNodes.length;
+            document.getElementById('points').innerText = pointMap.size;
 
-            // Geometry Phase
-            const jointGeom = new THREE.SphereGeometry(0.02, 16, 16);
-            const terminalGeom = new THREE.SphereGeometry(0.03, 16, 16);
-            const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x004400 });
-            const terminalMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x440000 });
-            const boneMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.2 });
+            const visualGroup = new THREE.Group();
+            scene.add(visualGroup);
 
-            apexNodes.forEach(node => {
-                // Marker
-                const isTerminal = node.children.filter(c => c.name.startsWith("APEX_NODE_")).length === 0;
-                const marker = new THREE.Mesh(isTerminal ? terminalGeom : jointGeom, isTerminal ? terminalMat : jointMat);
-                node.add(marker);
+            const jointGeom = new THREE.SphereGeometry(0.03);
+            const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
 
-                // Connector
-                const biologicalChildren = node.children.filter(c => c.name && c.name.startsWith("APEX_NODE_"));
-                biologicalChildren.forEach(child => {
-                    const start = new THREE.Vector3(0,0,0);
-                    const end = child.position.clone();
-                    const dir = end.clone().sub(start);
+            // 2. Draw Points (Spheres)
+            pointMap.forEach((node, name) => {
+                const sphere = new THREE.Mesh(jointGeom, jointMat);
+                sphere.position.copy(node.position);
+                visualGroup.add(sphere);
+            });
+
+            // 3. Draw Vectors (Bones)
+            connections.forEach(([startName, endName]) => {
+                const startNode = pointMap.get(startName);
+                const endNode = pointMap.get(endName);
+
+                if (startNode && endNode) {
+                    const startPos = startNode.position.clone();
+                    const endPos = endNode.position.clone();
+                    const dir = endPos.clone().sub(startPos);
                     const len = dir.length();
 
                     if (len > 0) {
-                        const boneGeom = new THREE.CylinderGeometry(0.008, 0.02, len, 8);
+                        const boneGeom = new THREE.CylinderGeometry(0.015, 0.015, len, 6);
                         boneGeom.translate(0, len / 2, 0);
                         const bone = new THREE.Mesh(boneGeom, boneMat);
+                        bone.position.copy(startPos);
                         bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-                        node.add(bone);
+                        visualGroup.add(bone);
                     }
-                });
+                }
             });
 
-            // Center camera
-            const box = new THREE.Box3().setFromObject(model);
+            // Focus camera
+            const box = new THREE.Box3().setFromObject(visualGroup);
             const center = box.getCenter(new THREE.Vector3());
-            controls.target.set(center.x, center.y, center.z);
+            controls.target.set(0, center.y, 0);
             controls.update();
 
-        }, undefined, (err) => {
-            document.getElementById('status').innerText = "FAIL";
-            document.getElementById('status').style.color = "#f00";
-            console.error(err);
+        }, undefined, e => { 
+            document.getElementById('status').innerText = "ERROR"; 
+            console.error(e);
         });
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
 
         function animate() {
             requestAnimationFrame(animate);
