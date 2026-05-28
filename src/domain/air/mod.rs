@@ -2,7 +2,7 @@ pub mod topology;
 
 #[cfg(test)]
 mod tests {
-    use super::topology::{EdgeId, Topology};
+    use super::topology::{EdgeId, EdgeType, Topology};
     use crate::domain::biomechanics::rigid_body::Vector3;
 
     #[test]
@@ -17,7 +17,8 @@ mod tests {
         assert_eq!(tibia_id.index(), 1);
 
         // Link them with a knee joint.
-        let joint_id = topology.add_edge(femur_id, tibia_id, "KneeJoint".to_string());
+        let joint_id =
+            topology.add_edge(femur_id, tibia_id, "KneeJoint".to_string(), EdgeType::Structural);
 
         // Assert edge exists
         let edge = topology.get_edge(joint_id).expect("Edge should exist");

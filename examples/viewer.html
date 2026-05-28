@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Live Anatomy</title>
+    <title>APEX Myofascial Layer</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -20,6 +20,7 @@
             background: #0f0; margin-right: 10px; animation: pulse 2s infinite;
         }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        .muscle-val { color: #f44; }
     </style>
 </head>
 <body>
@@ -27,7 +28,8 @@
         <span class="title"><span id="hot-indicator"></span>APEX :: LIVE</span>
         <span class="stat">Target:</span> <span class="val">human_skeleton.glb</span><br>
         <span class="stat">Status:</span> <span id="status" class="val" style="color: #0f0;">Syncing</span><br>
-        <span class="stat">Points:</span> <span id="points" class="val">0</span>
+        <span class="stat">Bones:</span> <span id="points" class="val">0</span><br>
+        <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span>
     </div>
     
     <script type="importmap">
@@ -64,15 +66,21 @@
         let visualGroup = new THREE.Group();
         scene.add(visualGroup);
 
+        const jointGeom = new THREE.SphereGeometry(0.02, 12, 12);
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
+        const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x330000 });
+        const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+        const baseCylinderGeom = new THREE.CylinderGeometry(0.012, 0.012, 1, 6);
+        baseCylinderGeom.translate(0, 0.5, 0);
+
         async function loadModel() {
-            // Determine path based on environment (GitHub Pages vs Local)
             const isDeployed = window.location.hostname.includes('github.io');
             const glbPath = isDeployed 
                 ? './human_skeleton.glb?t=' + Date.now()
                 : '../human_skeleton.glb?t=' + Date.now();
             
             loader.load(glbPath, (gltf) => {
-                // Clear previous
                 while(visualGroup.children.length > 0) {
                     visualGroup.remove(visualGroup.children[0]);
                 }
@@ -82,24 +90,20 @@
                 scene.add(currentModel);
                 currentModel.updateMatrixWorld(true);
 
-                const apexNodes = [];
+                const nodeMap = new Map();
                 currentModel.traverse(n => {
-                    if (n.isObject3D && n.name.startsWith("APEX_NODE_")) apexNodes.push(n);
+                    if (n.isObject3D && n.name.startsWith("APEX_NODE_")) {
+                        const name = n.name.replace("APEX_NODE_", "");
+                        nodeMap.set(name, n);
+                    }
                 });
 
-                document.getElementById('points').innerText = apexNodes.length;
+                document.getElementById('points').innerText = nodeMap.size;
                 document.getElementById('status').innerText = "OK";
                 document.getElementById('status').style.color = "#0f0";
 
-                const jointGeom = new THREE.SphereGeometry(0.025, 12, 12);
-                const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
-                const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-
-                // OPTIMIZATION: Create base cylinder once, scale later
-                const baseBoneGeom = new THREE.CylinderGeometry(0.012, 0.012, 1, 6);
-                baseBoneGeom.translate(0, 0.5, 0);
-
-                apexNodes.forEach(node => {
+                // 1. Draw Joints & Structural Bones
+                nodeMap.forEach((node, name) => {
                     const worldPos = new THREE.Vector3();
                     node.getWorldPosition(worldPos);
 
@@ -107,21 +111,51 @@
                     marker.position.copy(worldPos);
                     visualGroup.add(marker);
 
-                    const bioChildren = node.children.filter(c => c.name && c.name.startsWith("APEX_NODE_"));
-                    bioChildren.forEach(child => {
-                        const childWorldPos = new THREE.Vector3();
-                        child.getWorldPosition(childWorldPos);
-                        const dir = childWorldPos.clone().sub(worldPos);
-                        const len = dir.length();
-                        if (len > 0) {
-                            const bone = new THREE.Mesh(baseBoneGeom, boneMat);
-                            bone.position.copy(worldPos);
-                            bone.scale.set(1, len, 1);
-                            bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-                            visualGroup.add(bone);
+                    node.children.forEach(child => {
+                        if (child.name.startsWith("APEX_NODE_")) {
+                            const childWorldPos = new THREE.Vector3();
+                            child.getWorldPosition(childWorldPos);
+                            const dir = childWorldPos.clone().sub(worldPos);
+                            const len = dir.length();
+                            if (len > 0) {
+                                const bone = new THREE.Mesh(baseCylinderGeom, boneMat);
+                                bone.position.copy(worldPos);
+                                bone.scale.set(1, len, 1);
+                                bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                                visualGroup.add(bone);
+                            }
                         }
                     });
                 });
+
+                // 2. Draw Actuators (Muscles)
+                let muscleCount = 0;
+                if (gltf.scenes[0].extras && gltf.scenes[0].extras.muscles) {
+                    const muscles = gltf.scenes[0].extras.muscles;
+                    muscleCount = muscles.length;
+
+                    muscles.forEach(m => {
+                        const sourceNode = nodeMap.get(m.source);
+                        const targetNode = nodeMap.get(m.target);
+                        if (sourceNode && targetNode) {
+                            const sPos = new THREE.Vector3();
+                            const tPos = new THREE.Vector3();
+                            sourceNode.getWorldPosition(sPos);
+                            targetNode.getWorldPosition(tPos);
+
+                            const dir = tPos.clone().sub(sPos);
+                            const len = dir.length();
+                            if (len > 0) {
+                                const muscleMesh = new THREE.Mesh(baseCylinderGeom, muscleMat);
+                                muscleMesh.position.copy(sPos);
+                                muscleMesh.scale.set(0.8, len, 0.8); // Slightly thinner than bone
+                                muscleMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                                visualGroup.add(muscleMesh);
+                            }
+                        }
+                    });
+                }
+                document.getElementById('muscles').innerText = muscleCount;
 
             }, undefined, (e) => {
                 document.getElementById('status').innerText = "WAITING";
@@ -129,12 +163,7 @@
             });
         }
 
-        // Initial Load
         loadModel();
-
-        // HOT RELOAD POLLING
-        // In a production environment, we'd use WebSockets. 
-        // For this high-fidelity CLI environment, we poll the file every 2 seconds.
         setInterval(loadModel, 2000);
 
         const controls = new OrbitControls(camera, renderer.domElement);

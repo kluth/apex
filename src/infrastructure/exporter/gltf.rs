@@ -1,6 +1,6 @@
-use crate::domain::air::topology::{NodeId, Topology};
+use crate::domain::air::topology::{EdgeType, NodeId, Topology};
 use gltf_json as json;
-use serde_json::to_vec;
+use serde_json::{json as json_macro, to_vec};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
@@ -29,15 +29,30 @@ impl GltfExporter {
     ) -> Result<(), String> {
         let mut root = json::Root::default();
 
-        // 1. Identify parents based on structural edges
+        // 1. Separate Edges
         let mut parent_map = HashMap::new();
         let mut children_map: HashMap<usize, Vec<usize>> = HashMap::new();
+        let mut muscles = Vec::new();
 
         for edge in topology.edges() {
             let s = edge.source().index();
             let t = edge.target().index();
-            parent_map.insert(t, s);
-            children_map.entry(s).or_default().push(t);
+            
+            match edge.edge_type() {
+                EdgeType::Structural => {
+                    parent_map.insert(t, s);
+                    children_map.entry(s).or_default().push(t);
+                }
+                EdgeType::Actuator => {
+                    let s_name = topology.node_name(edge.source()).unwrap_or("Unknown");
+                    let t_name = topology.node_name(edge.target()).unwrap_or("Unknown");
+                    muscles.push(json_macro!({
+                        "name": edge.name(),
+                        "source": s_name,
+                        "target": t_name
+                    }));
+                }
+            }
         }
 
         // 2. Create Nodes with Absolute Coordinates
@@ -47,9 +62,6 @@ impl GltfExporter {
             let display_name = topology.node_name(id).unwrap_or("Unknown");
             let pos = topology.node_position(id).unwrap_or_default();
 
-            // We use absolute coordinates in translation.
-            // In a flat hierarchy (all nodes as roots), this is standard.
-            // When nesting, we must subtract parent coordinates.
             let translation = if let Some(&parent_idx) = parent_map.get(&i) {
                 let p_pos = topology
                     .node_position(NodeId::new(parent_idx))
@@ -62,7 +74,7 @@ impl GltfExporter {
 
             nodes.push(json::Node {
                 camera: None,
-                children: None, // Will be filled in next step
+                children: None,
                 extensions: Default::default(),
                 extras: None,
                 matrix: None,
@@ -87,18 +99,24 @@ impl GltfExporter {
             nodes[parent_idx].children = Some(child_indices);
         }
 
-        // 4. Setup Scene (Only nodes without parents are scene roots)
+        // 4. Setup Scene
         let root_nodes: Vec<_> = (0..nodes.len())
             .filter(|i| !all_children.contains(i))
             .map(|i| json::Index::new(i as u32))
             .collect();
 
-        let scene_idx = root.push(json::Scene {
+        let mut scene = json::Scene {
             extensions: Default::default(),
             extras: Default::default(),
             name: Some("APEX Organism".to_string()),
             nodes: root_nodes,
-        });
+        };
+        
+        // Export muscles in extras
+        let extras_json = serde_json::to_string(&json_macro!({ "muscles": muscles })).unwrap();
+        scene.extras = Some(serde_json::value::RawValue::from_string(extras_json).unwrap());
+
+        let scene_idx = root.push(scene);
         root.scene = Some(scene_idx);
         root.nodes = nodes;
 

@@ -1,6 +1,6 @@
 use crate::application::compiler::parser::{ParseError, Parser};
 use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
-use crate::domain::air::topology::{NodeId, Topology};
+use crate::domain::air::topology::{EdgeType, NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
@@ -85,7 +85,12 @@ impl CompilerPipeline {
                 ValidationError::MissingIdentifier(joint.target_bone_id().to_string())
             })?;
 
-            topology.add_edge(*source_id, *target_id, joint.id().to_string());
+            topology.add_edge(
+                *source_id,
+                *target_id,
+                joint.id().to_string(),
+                EdgeType::Structural,
+            );
         }
 
         for muscle in muscles {
@@ -96,7 +101,12 @@ impl CompilerPipeline {
                 ValidationError::MissingIdentifier(muscle.target_bone_id().to_string())
             })?;
 
-            topology.add_edge(*source_id, *target_id, muscle.id().to_string());
+            topology.add_edge(
+                *source_id,
+                *target_id,
+                muscle.id().to_string(),
+                EdgeType::Actuator,
+            );
         }
 
         for synapse in synapses {

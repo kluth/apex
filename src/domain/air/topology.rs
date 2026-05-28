@@ -15,7 +15,7 @@ impl NodeId {
     }
 }
 
-/// Represents an index within the Topology Arena for an Edge (Joint).
+/// Represents an index within the Topology Arena for an Edge (Joint or Muscle).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeId(usize);
 
@@ -29,12 +29,22 @@ impl EdgeId {
     }
 }
 
-/// Represents a structural connection between two Nodes.
+/// Represents the role of a topological connection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EdgeType {
+    /// A structural link (Joint) that defines the anatomical hierarchy.
+    Structural,
+    /// An active link (Muscle) that provides force between nodes.
+    Actuator,
+}
+
+/// Represents a connection between two Nodes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Edge {
     source: NodeId,
     target: NodeId,
     name: String,
+    edge_type: EdgeType,
 }
 
 impl Edge {
@@ -48,6 +58,10 @@ impl Edge {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn edge_type(&self) -> EdgeType {
+        self.edge_type
     }
 }
 
@@ -110,12 +124,19 @@ impl Topology {
         &self.edges
     }
 
-    pub fn add_edge(&mut self, source: NodeId, target: NodeId, name: String) -> EdgeId {
+    pub fn add_edge(
+        &mut self,
+        source: NodeId,
+        target: NodeId,
+        name: String,
+        edge_type: EdgeType,
+    ) -> EdgeId {
         let idx = self.edges.len();
         let edge = Edge {
             source,
             target,
             name,
+            edge_type,
         };
         self.edges.push(edge);
         EdgeId(idx)
