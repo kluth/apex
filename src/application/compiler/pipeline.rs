@@ -84,14 +84,6 @@ impl CompilerPipeline {
             bone_map.insert(bone.id().to_string(), id);
         }
 
-        // CPGs become Neural Nodes (Positioned in a virtual "brain" area or near head)
-        for (i, cpg) in cpgs.iter().enumerate() {
-            // Virtual brain grid at Y=2.0
-            let brain_pos = Vector3 { x: (i as f64 * 0.1) - 0.5, y: 2.1, z: 0.0 };
-            let id = topology.add_node(format!("CPG_{}", cpg.id()), brain_pos, None);
-            cpg_map.insert(cpg.id().to_string(), id);
-        }
-
         // Joints become Structural Edges
         for joint in joints {
             let source_id = bone_map.get(joint.source_bone_id()).ok_or_else(|| {
@@ -125,13 +117,36 @@ impl CompilerPipeline {
                 EdgeType::Actuator,
             );
             
-            // Create a virtual node for the muscle center to visualize synapses.
+            // ANATOMICAL FIX: Muscle node is placed at the Origin (Source) to make synapses look integrated.
             let s_pos = topology.node_position(*source_id).unwrap_or_default();
-            let t_pos = topology.node_position(*target_id).unwrap_or_default();
-            let center = (s_pos + t_pos) * 0.5;
-            
-            let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), center, None);
+            let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), s_pos, None);
             muscle_map.insert(muscle.id().to_string(), m_node_id);
+        }
+
+        // CPGs (Nerves) become Neural Nodes
+        for cpg in &cpgs {
+            let id_str = cpg.id();
+            let mut pos = Vector3 { x: 0.0, y: 2.1, z: 0.0 }; // Fallback "Brain"
+
+            // ANATOMICAL POSITIONING:
+            // Spinal Nerves are placed at their corresponding Vertebrae.
+            // Cranial Nerves are placed at the Head/C1 area.
+            if id_str.starts_with("Nerve_") {
+                let vert_id = id_str.replace("Nerve_", "");
+                if let Some(node_id) = bone_map.get(&vert_id) {
+                    pos = topology.node_position(*node_id).unwrap_or(pos);
+                    // Slightly offset from spine for visibility
+                    pos.x += 0.05; 
+                }
+            } else if id_str.starts_with("CN_") {
+                if let Some(node_id) = bone_map.get("Occipital") {
+                    pos = topology.node_position(*node_id).unwrap_or(pos);
+                    pos.z += 0.05;
+                }
+            }
+
+            let id = topology.add_node(format!("CPG_{}", id_str), pos, None);
+            cpg_map.insert(id_str.to_string(), id);
         }
 
         // Synapses become Neural Edges
@@ -157,7 +172,8 @@ impl CompilerPipeline {
                 ValidationError::MissingIdentifier(receptor.muscle_id.clone())
             })?;
             
-            // Pick a random CPG as target for feedback (simplified)
+            // Receptors provide feedback to the nerve that controls the muscle (simplified)
+            // For now, let's find a matching nerve or use a fallback.
             if let Some(target_cpg_id) = cpg_map.values().next() {
                 topology.add_edge(
                     *m_node_id,
