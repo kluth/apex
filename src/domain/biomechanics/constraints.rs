@@ -33,10 +33,20 @@ impl DistanceConstraint {
 
 impl XpbdConstraint for DistanceConstraint {
     fn solve(&self, registry: &mut BodyRegistry, dt: f64, lambda: f64) -> f64 {
+        if dt < 1e-9 {
+            return lambda;
+        }
+
         let (w1, w2) = (
             registry.inv_mass[self.body_a_idx],
             registry.inv_mass[self.body_b_idx],
         );
+
+        let w_sum = w1 + w2;
+        if w_sum < 1e-9 && self.compliance < 1e-9 {
+            return lambda;
+        }
+
         let dx = registry.pos_x[self.body_a_idx] - registry.pos_x[self.body_b_idx];
         let dy = registry.pos_y[self.body_a_idx] - registry.pos_y[self.body_b_idx];
         let dz = registry.pos_z[self.body_a_idx] - registry.pos_z[self.body_b_idx];
@@ -53,7 +63,12 @@ impl XpbdConstraint for DistanceConstraint {
         let c = dist - self.rest_length;
         let alpha_tilde = self.compliance / (dt * dt);
 
-        let delta_lambda = (-c - alpha_tilde * lambda) / (w1 + w2 + alpha_tilde);
+        let denom = w_sum + alpha_tilde;
+        if denom < 1e-9 {
+            return lambda;
+        }
+
+        let delta_lambda = (-c - alpha_tilde * lambda) / denom;
 
         registry.apply_correction(
             self.body_a_idx,

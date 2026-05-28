@@ -80,10 +80,10 @@ impl CompilerPipeline {
         for joint in joints {
             let source_id = bone_map
                 .get(joint.source_bone_id())
-                .expect("Source bone must exist");
+                .ok_or_else(|| ValidationError::MissingIdentifier(joint.source_bone_id().to_string()))?;
             let target_id = bone_map
                 .get(joint.target_bone_id())
-                .expect("Target bone must exist");
+                .ok_or_else(|| ValidationError::MissingIdentifier(joint.target_bone_id().to_string()))?;
 
             topology.add_edge(*source_id, *target_id, joint.id().to_string());
         }
@@ -91,10 +91,10 @@ impl CompilerPipeline {
         for muscle in muscles {
             let source_id = bone_map
                 .get(muscle.source_bone_id())
-                .expect("Source bone must exist");
+                .ok_or_else(|| ValidationError::MissingIdentifier(muscle.source_bone_id().to_string()))?;
             let target_id = bone_map
                 .get(muscle.target_bone_id())
-                .expect("Target bone must exist");
+                .ok_or_else(|| ValidationError::MissingIdentifier(muscle.target_bone_id().to_string()))?;
 
             topology.add_edge(*source_id, *target_id, muscle.id().to_string());
         }
@@ -106,7 +106,7 @@ impl CompilerPipeline {
         for skin in skins {
             let _target_id = bone_map
                 .get(skin.target_bone_id())
-                .expect("Target bone for skin must exist");
+                .ok_or_else(|| ValidationError::MissingIdentifier(skin.target_bone_id().to_string()))?;
             tracing::debug!("Lowering Skin shell: {}", skin.id());
         }
 

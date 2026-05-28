@@ -4,6 +4,7 @@ use std::collections::HashSet;
 #[derive(Debug, PartialEq)]
 pub enum ValidationError {
     DuplicateIdentifier(String),
+    MissingIdentifier(String),
 }
 
 /// Domain Service (orchestrated by Application) to validate biological constraints.
@@ -13,10 +14,10 @@ impl BiologicalValidator {
     /// Validates that all biological structures in the AST are plausible.
     /// Returns Ok(()) or a ValidationError.
     pub fn validate_bones(bones: &[Bone]) -> Result<(), ValidationError> {
-        let mut ids = HashSet::new();
+        let mut ids = HashSet::with_capacity(bones.len());
 
         for bone in bones {
-            if !ids.insert(bone.id().to_string()) {
+            if !ids.insert(bone.id()) {
                 return Err(ValidationError::DuplicateIdentifier(bone.id().to_string()));
             }
         }

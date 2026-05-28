@@ -17,6 +17,12 @@ impl Cpg {
         }
     }
 
+    /// Sets the initial phase of the CPG.
+    pub fn with_phase_offset(mut self, offset: f64) -> Self {
+        self.phase = offset;
+        self
+    }
+
     /// Advances the CPG state and returns the current signal value.
     /// signal = sin(phase)
     pub fn step(&mut self, dt: f64) -> f64 {
