@@ -63,5 +63,3 @@ joint JC3 { source = C4; target = C3; }
 joint JC2 { source = C3; target = C2; }
 joint JC1 { source = C2; target = C1; }
 
-bone Head { mass = 5.0 kg; position = (0.0, 1.95, 0.0); }
-joint JH { source = C1; target = Head; }

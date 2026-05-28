@@ -95,6 +95,10 @@
                 const boneMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 });
                 const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
+                // OPTIMIZATION: Create base cylinder once, scale later
+                const baseBoneGeom = new THREE.CylinderGeometry(0.012, 0.012, 1, 6);
+                baseBoneGeom.translate(0, 0.5, 0);
+
                 apexNodes.forEach(node => {
                     const worldPos = new THREE.Vector3();
                     node.getWorldPosition(worldPos);
@@ -110,10 +114,9 @@
                         const dir = childWorldPos.clone().sub(worldPos);
                         const len = dir.length();
                         if (len > 0) {
-                            const boneGeom = new THREE.CylinderGeometry(0.012, 0.012, len, 6);
-                            boneGeom.translate(0, len / 2, 0);
-                            const bone = new THREE.Mesh(boneGeom, boneMat);
+                            const bone = new THREE.Mesh(baseBoneGeom, boneMat);
                             bone.position.copy(worldPos);
+                            bone.scale.set(1, len, 1);
                             bone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
                             visualGroup.add(bone);
                         }
