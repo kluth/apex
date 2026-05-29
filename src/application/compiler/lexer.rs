@@ -10,6 +10,7 @@ pub enum Token {
     Synapse,
     Receptor,
     Skin,
+    Organ,
     Include,
 
     // Identifiers and Literals
@@ -123,6 +124,7 @@ impl<'a> Lexer<'a> {
             "synapse" => Token::Synapse,
             "receptor" => Token::Receptor,
             "skin" => Token::Skin,
+            "organ" => Token::Organ,
             "include" => Token::Include,
             "kg" => Token::Kg,
             "m" => Token::M,

@@ -42,6 +42,8 @@ pub enum EdgeType {
     Sensory,
     /// An integumentary link (Skin) that defines volumetric envelopes.
     Integument,
+    /// A visceral link (Organ) that defines internal volumetric bodies.
+    Visceral,
 }
 
 /// Represents a connection between two Nodes.

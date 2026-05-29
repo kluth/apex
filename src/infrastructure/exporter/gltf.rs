@@ -67,6 +67,7 @@ impl GltfExporter {
                     EdgeType::Neural => "synapse",
                     EdgeType::Sensory => "feedback",
                     EdgeType::Integument => "skin",
+                    EdgeType::Visceral => "visceral",
                 }
             }));
         }

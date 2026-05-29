@@ -18,6 +18,9 @@ organism AverageHuman {
     // 4. SENSORY (The Feedback System - Proprioceptors)
     include "human_receptors.apex";
 
-    // 5. INTEGUMENTARY (The Skin - Volumetric Envelopes)
+    // 5. VISCERAL (Internal Organs)
+    include "human_organs.apex";
+
+    // 6. INTEGUMENTARY (The Skin - Volumetric Envelopes)
     include "human_skin.apex";
 }

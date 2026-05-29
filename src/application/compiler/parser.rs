@@ -26,6 +26,14 @@ pub struct ReceptorAst {
     pub receptor_type: String,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct OrganAst {
+    pub id: String,
+    pub anchor_bone_id: String,
+    pub mass: f64,
+    pub volume: f64,
+}
+
 pub struct OrganismAst {
     pub name: String,
     pub bones: Vec<Bone>,
@@ -35,6 +43,7 @@ pub struct OrganismAst {
     pub synapses: Vec<Synapse>,
     pub receptors: Vec<ReceptorAst>,
     pub skins: Vec<Skin>,
+    pub organs: Vec<OrganAst>,
 }
 
 pub struct Parser<'a> {
@@ -115,8 +124,9 @@ impl<'a> Parser<'a> {
         let mut synapses = Vec::new();
         let mut receptors = Vec::new();
         let mut skins = Vec::new();
+        let mut organs = Vec::new();
 
-        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, &mut receptors, &mut skins, false)?;
+        self.parse_body_elements(&mut bones, &mut joints, &mut muscles, &mut cpgs, &mut synapses, &mut receptors, &mut skins, &mut organs, false)?;
 
         self.expect(Token::BraceClose)?;
         Ok(OrganismAst {
@@ -128,6 +138,7 @@ impl<'a> Parser<'a> {
             synapses,
             receptors,
             skins,
+            organs,
         })
     }
 
@@ -140,6 +151,7 @@ impl<'a> Parser<'a> {
         synapses: &mut Vec<Synapse>,
         receptors: &mut Vec<ReceptorAst>,
         skins: &mut Vec<Skin>,
+        organs: &mut Vec<OrganAst>,
         is_include: bool,
     ) -> Result<(), ParseError> {
         let terminal = if is_include { Token::Eof } else { Token::BraceClose };
@@ -161,7 +173,7 @@ impl<'a> Parser<'a> {
                                 self.cpg_registry.clone(),
                             );
 
-                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, receptors, skins, true)?;
+                        sub_parser.parse_body_elements(bones, joints, muscles, cpgs, synapses, receptors, skins, organs, true)?;
                         
                         self.bone_registry.extend(sub_parser.bone_registry);
                         self.muscle_registry.extend(sub_parser.muscle_registry);
@@ -197,6 +209,9 @@ impl<'a> Parser<'a> {
                 }
                 Token::Skin => {
                     skins.push(self.parse_skin()?);
+                }
+                Token::Organ => {
+                    organs.push(self.parse_organ()?);
                 }
                 _ => self.advance(),
             }
@@ -580,6 +595,58 @@ impl<'a> Parser<'a> {
         let mut skin = Skin::new(id, bone);
         for h in hulls { skin.add_hull(h); }
         Ok(skin)
+    }
+
+    fn parse_organ(&mut self) -> Result<OrganAst, ParseError> {
+        self.expect(Token::Organ)?;
+        let id = self.read_identifier("Expected organ id")?;
+        self.advance();
+
+        self.expect(Token::BraceOpen)?;
+        let mut bone_id = None;
+        let mut mass = 1.0;
+        let mut volume = 1.0;
+
+        while self.current_token != Token::BraceClose && self.current_token != Token::Eof {
+            if let Token::Identifier(prop) = &self.current_token {
+                match prop.as_str() {
+                    "anchor" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        bone_id = Some(self.read_identifier("Expected bone id")?);
+                        self.advance();
+                        self.expect(Token::Semicolon)?;
+                    }
+                    "mass" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(v) = self.current_token {
+                            mass = v;
+                            self.advance();
+                            self.expect(Token::Kg)?;
+                            self.expect(Token::Semicolon)?;
+                        }
+                    }
+                    "volume" => {
+                        self.advance();
+                        self.expect(Token::Equal)?;
+                        if let Token::Number(v) = self.current_token {
+                            volume = v;
+                            self.advance();
+                            self.expect(Token::M)?; // Using 'm' as unit for volume (cubic meters)
+                            self.expect(Token::Semicolon)?;
+                        }
+                    }
+                    _ => self.advance(),
+                }
+            } else {
+                self.advance();
+            }
+        }
+        self.expect(Token::BraceClose)?;
+
+        let b_id = bone_id.ok_or_else(|| ParseError::MissingProperty("anchor".to_string()))?;
+        Ok(OrganAst { id, anchor_bone_id: b_id, mass, volume })
     }
 
     fn read_identifier(&self, msg: &str) -> Result<String, ParseError> {
