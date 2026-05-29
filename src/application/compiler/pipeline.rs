@@ -238,14 +238,21 @@ impl CompilerPipeline {
             let b_t = ast.bones.iter().find(|b| b.id() == joint.target_bone_id()).unwrap();
             let dist = (b_s.position() - b_t.position()).length();
             
-            world.add_constraint(DistanceConstraint::new(*s_idx, *t_idx, dist, 0.0));
+            // BIOLOGICAL TWEAK: Ribs must be compliant to allow breathing expansion
+            let compliance = if joint.id().contains("Rib") || joint.id().contains("JLR") || joint.id().contains("JRR") {
+                0.8 // Highly compliant for chest expansion
+            } else {
+                0.0 // Stiff for everything else
+            };
+            
+            world.add_constraint(DistanceConstraint::new(*s_idx, *t_idx, dist, compliance));
         }
 
         // 4. Add Actuators (Muscles)
         for muscle in &ast.muscles {
             let s_idx = bone_map.get(muscle.source_bone_id()).unwrap();
             let t_idx = bone_map.get(muscle.target_bone_id()).unwrap();
-            let actuator = MuscleActuator::new(*s_idx, *t_idx, 1500.0); // max force
+            let actuator = MuscleActuator::new(*s_idx, *t_idx, 2000.0); // increased max force for visibility
             let idx = world.add_actuator(actuator);
             actuator_map.insert(muscle.id().to_string(), idx);
         }

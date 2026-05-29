@@ -33,8 +33,8 @@ fn main() -> Result<(), String> {
         // 3. Sync positions back to Topology for visual export
         world.sync_to_topology(&mut topology);
 
-        // 4. Periodic Export (Every 0.2s for smoothness in viewer)
-        if (time * 100.0).round() % 20.0 < 2.0 {
+        // 4. Periodic Export (Every 0.1s for smoothness in viewer)
+        if (time * 100.0).round() % 10.0 < 2.0 {
             if let Err(e) = exporter.export_topology(&topology, "human_skeleton.glb") {
                 eprintln!("Export error: {}", e);
             }
