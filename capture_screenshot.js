@@ -7,8 +7,11 @@ const { chromium } = require('playwright');
   page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
 
   await page.goto('http://localhost:8000/examples/viewer.html');
-  await page.waitForSelector('#status:has-text("OK")', { timeout: 10000 });
-  await page.waitForTimeout(2000);
+  await page.waitForFunction(() => {
+    const el = document.getElementById('boneCount');
+    return el && parseInt(el.innerText) > 0;
+  }, { timeout: 15000 });
+  await page.waitForTimeout(3000);
   
   // Take screenshot from front
   await page.screenshot({ path: 'apex_human_front.png' });

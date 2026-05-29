@@ -1,16 +1,17 @@
 // === HUMAN CORE: PELVIS & VERTEBRAL COLUMN ===
 
-// 1. PELVIS (The Innominate Bones)
-bone L_Innominate { mass = 7.5 kg; position = (-0.1, 0.9, 0.0); mesh = "anatomy/human/pelvis_l"; }
-bone R_Innominate { mass = 7.5 kg; position = (0.1, 0.9, 0.0);  mesh = "anatomy/human/pelvis_r"; }
+// 1. PELVIS (Structural Anchor)
+bone L_Innominate { mass = 7.5 kg; position = (-0.15, 0.9, 0.0); mesh = "anatomy/human/pelvis_l"; }
+bone R_Innominate { mass = 7.5 kg; position = (0.15, 0.9, 0.0);  mesh = "anatomy/human/pelvis_r"; }
 
-// 2. SACRUM & COCCYX (Anchored between Innominates)
+// 2. SACRUM & COCCYX
 bone Sacrum { mass = 1.0 kg; position = (0.0, 0.85, 0.0); }
 bone Coccyx { mass = 0.2 kg; position = (0.0, 0.8, -0.05); }
 
-joint JS_Pelv_L { source = L_Innominate; target = Sacrum; }
-joint JS_Pelv_R { source = R_Innominate; target = Sacrum; }
-joint JS0 { source = Sacrum; target = Coccyx; }
+joint J_Pelv_LS { source = L_Innominate; target = Sacrum; }
+joint J_Pelv_RS { source = R_Innominate; target = Sacrum; }
+joint J_Pelv_Mid { source = L_Innominate; target = R_Innominate; }
+joint J_JS0 { source = Sacrum; target = Coccyx; }
 
 // 3. LUMBAR VERTEBRAE (L5 - L1)
 bone L5 { mass = 0.5 kg; position = (0.0, 0.92, 0.0); }

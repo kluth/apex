@@ -1,6 +1,3 @@
-   Compiling apex v0.1.0 (/home/matthias/projects/apex)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.93s
-     Running `target/debug/examples/simulate_human`
 APEX Real-Time Locomotion Simulator
 Compiling complex biomechanical model...
 Simulation started. 60 FPS loop active.
