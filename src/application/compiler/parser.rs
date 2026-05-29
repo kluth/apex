@@ -559,6 +559,28 @@ impl<'a> Parser<'a> {
                                          self.expect(Token::Semicolon)?;
                                          primitive = CollisionPrimitive::Box { width: w, height: h, depth: d };
                                      },
+                                     "capsule" => {
+                                         self.advance();
+                                         self.expect(Token::ParenOpen)?;
+                                         let r = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let l = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance();
+                                         self.expect(Token::ParenClose)?;
+                                         self.expect(Token::Semicolon)?;
+                                         primitive = CollisionPrimitive::Capsule { radius: r, length: l };
+                                     },
+                                     "cylinder" => {
+                                         self.advance();
+                                         self.expect(Token::ParenOpen)?;
+                                         let r = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance(); self.expect(Token::Comma)?;
+                                         let l = if let Token::Number(v) = self.current_token { v } else { 0.1 };
+                                         self.advance();
+                                         self.expect(Token::ParenClose)?;
+                                         self.expect(Token::Semicolon)?;
+                                         primitive = CollisionPrimitive::Cylinder { radius: r, length: l };
+                                     },
                                      "offset" => {
                                          self.advance();
                                          self.expect(Token::Equal)?;

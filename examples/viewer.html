@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Total Sanctification</title>
+    <title>APEX Visual Realism</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         #info { 
@@ -28,12 +28,12 @@
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: TOTAL SANCTIFICATION</span>
+        <span class="title"><span id="hot-indicator"></span>APEX :: VISUAL REALISM</span>
         <span class="stat">Bones:</span> <span id="boneCount" class="val">0</span> / 206<br>
         <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span><br>
         <span class="stat">Nerves:</span> <span id="nerves" class="val neural-val">0</span><br>
         <span class="stat">Organs:</span> <span id="organs" class="val organ-val">0</span><br>
-        <span class="stat">Skin:</span> <span id="skin" class="val skin-val">0</span><br>
+        <span class="stat">Skin Hulls:</span> <span id="skin" class="val skin-val">0</span><br>
         <span class="stat">Status:</span> <span id="status" class="val">OK</span>
     </div>
     
@@ -75,21 +75,40 @@
         const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x440000 });
         const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000044, transparent: true, opacity: 0.6 });
         const organMat = new THREE.MeshStandardMaterial({ color: 0xff66cc, emissive: 0x330022 });
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0x66ccff, transparent: true, opacity: 0.15 });
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, transparent: true, opacity: 0.25 });
         const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
-        const baseCylinder = new THREE.CylinderGeometry(0.008, 0.008, 1, 6);
+        const baseCylinder = new THREE.CylinderGeometry(0.006, 0.006, 1, 6);
         baseCylinder.translate(0, 0.5, 0);
-        const baseSphere = new THREE.SphereGeometry(1, 12, 12);
 
         function getGlbPath() {
-            // If hostname is localhost or 0.0.0.0, we assume the python server structure
-            if (window.location.hostname.includes('localhost') || window.location.hostname.includes('0.0.0.0')) {
-                if (window.location.pathname.includes('/examples/')) return '../human_skeleton.glb?t=' + Date.now();
+            const loc = window.location;
+            if (loc.hostname.includes('localhost') || loc.hostname.includes('0.0.0.0')) {
+                if (loc.pathname.includes('/examples/')) return '../human_skeleton.glb?t=' + Date.now();
                 return './human_skeleton.glb?t=' + Date.now();
             }
-            // For GitHub Pages, use relative path (they are in the same folder)
             return 'human_skeleton.glb?t=' + Date.now();
+        }
+
+        function createPrimitive(shapeData, material) {
+            let geom;
+            switch(shapeData.type) {
+                case 'sphere':
+                    geom = new THREE.SphereGeometry(shapeData.radius, 16, 16);
+                    break;
+                case 'box':
+                    geom = new THREE.BoxGeometry(shapeData.width, shapeData.height, shapeData.depth);
+                    break;
+                case 'capsule':
+                    geom = new THREE.CapsuleGeometry(shapeData.radius, shapeData.length, 4, 8);
+                    break;
+                case 'cylinder':
+                    geom = new THREE.CylinderGeometry(shapeData.radius, shapeData.radius, shapeData.length, 8);
+                    break;
+                default:
+                    geom = new THREE.SphereGeometry(0.05, 8, 8);
+            }
+            return new THREE.Mesh(geom, material);
         }
 
         async function loadModel() {
@@ -108,16 +127,17 @@
                     if (n.name.startsWith("APEX_NODE_")) {
                         const name = n.name.replace("APEX_NODE_", "");
                         nodeMap.set(name, n);
-                        if (!name.startsWith("CPG_") && !name.startsWith("MUSCLE_NODE_") && !name.startsWith("SKIN_HULL_") && !name.startsWith("ORGAN_NODE_")) {
-                            bCnt++;
-                            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.01, 8, 8), jointMat);
-                            marker.position.copy(n.position);
-                            visualGroup.add(marker);
-                        } else if (name.startsWith("CPG_")) {
+                        
+                        if (name.startsWith("CPG_")) {
                             cCnt++;
-                            const brainMarker = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), neuralMat);
+                            const brainMarker = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), neuralMat);
                             brainMarker.position.copy(n.position);
                             visualGroup.add(brainMarker);
+                        } else if (!name.startsWith("MUSCLE_NODE_") && !name.startsWith("SKIN_HULL_") && !name.startsWith("ORGAN_NODE_")) {
+                            bCnt++;
+                            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), jointMat);
+                            marker.position.copy(n.position);
+                            visualGroup.add(marker);
                         }
                     }
                 });
@@ -134,37 +154,30 @@
                     if (s && t) {
                         const dir = t.position.clone().sub(s.position);
                         const len = dir.length();
-                        if (len > 0) {
+                        
+                        if (link.type === "skin" || link.type === "visceral") {
+                            const shapeData = t.userData.shape;
+                            if (shapeData) {
+                                const mesh = createPrimitive(shapeData, link.type === "skin" ? skinMat : organMat);
+                                mesh.position.copy(t.position);
+                                // Align rotation if it's a limb capsule/cylinder
+                                if (shapeData.type === 'capsule' || shapeData.type === 'cylinder') {
+                                    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                                }
+                                visualGroup.add(mesh);
+                                if (link.type === "skin") sCnt++; else oCnt++;
+                            }
+                        } else if (len > 0) {
                             let mat = boneMat;
                             let scale = 1.0;
-                            let isSpecial = false;
-
                             if (link.type === "muscle") { mat = muscleMat; scale = 0.8; mCnt++; }
                             else if (link.type === "synapse") { mat = neuralMat; scale = 0.3; }
-                            else if (link.type === "skin") {
-                                const hull = new THREE.Mesh(baseSphere, skinMat);
-                                hull.position.copy(t.position);
-                                hull.scale.set(0.12, 0.12, 0.12);
-                                visualGroup.add(hull);
-                                sCnt++;
-                                isSpecial = true;
-                            }
-                            else if (link.type === "visceral") {
-                                const organ = new THREE.Mesh(baseSphere, organMat);
-                                organ.position.copy(t.position);
-                                organ.scale.set(0.1, 0.1, 0.1);
-                                visualGroup.add(organ);
-                                oCnt++;
-                                isSpecial = true;
-                            }
 
-                            if (!isSpecial) {
-                                const mesh = new THREE.Mesh(baseCylinder, mat);
-                                mesh.position.copy(s.position);
-                                mesh.scale.set(scale, len, scale);
-                                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
-                                visualGroup.add(mesh);
-                            }
+                            const mesh = new THREE.Mesh(baseCylinder, mat);
+                            mesh.position.copy(s.position);
+                            mesh.scale.set(scale, len, scale);
+                            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+                            visualGroup.add(mesh);
                         }
                     }
                 });

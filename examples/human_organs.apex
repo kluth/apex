@@ -4,7 +4,7 @@
 organ Brain {
     anchor = Frontal;
     mass = 1.4 kg;
-    volume = 0.0013 m;
+    volume = 0.0013 m; // ~1.3 Liters
 }
 
 // 2. HEART
@@ -18,12 +18,12 @@ organ Heart {
 organ Lung_L {
     anchor = L_Rib5;
     mass = 0.5 kg;
-    volume = 0.002 m;
+    volume = 0.001 m;
 }
 organ Lung_R {
     anchor = R_Rib5;
     mass = 0.5 kg;
-    volume = 0.002 m;
+    volume = 0.001 m;
 }
 
 // 4. LIVER
@@ -37,10 +37,10 @@ organ Liver {
 organ Kidney_L {
     anchor = L1;
     mass = 0.15 kg;
-    volume = 0.0001 m;
+    volume = 0.00015 m;
 }
 organ Kidney_R {
     anchor = L1;
     mass = 0.15 kg;
-    volume = 0.0001 m;
+    volume = 0.00015 m;
 }

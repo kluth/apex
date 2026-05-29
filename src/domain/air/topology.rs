@@ -73,10 +73,20 @@ impl Edge {
     }
 }
 
+/// Represents the geometric primitive and dimensions for a node.
+#[derive(Debug, Clone, PartialEq)]
+pub enum NodeShape {
+    Sphere { radius: f64 },
+    Box { width: f64, height: f64, depth: f64 },
+    Capsule { radius: f64, length: f64 },
+    Cylinder { radius: f64, length: f64 },
+}
+
 pub struct Node {
     pub name: String,
     pub position: Vector3,
     pub mesh_reference: Option<MeshReference>,
+    pub shape: Option<NodeShape>,
 }
 
 /// The Anatomy Intermediate Representation topological graph.
@@ -100,12 +110,14 @@ impl Topology {
         name: String,
         position: Vector3,
         mesh_reference: Option<MeshReference>,
+        shape: Option<NodeShape>,
     ) -> NodeId {
         let idx = self.nodes.len();
         self.nodes.push(Node {
             name,
             position,
             mesh_reference,
+            shape,
         });
         NodeId(idx)
     }
@@ -130,6 +142,10 @@ impl Topology {
         self.nodes
             .get(id.index())
             .and_then(|n| n.mesh_reference.as_ref())
+    }
+
+    pub fn node_shape(&self, id: NodeId) -> Option<&NodeShape> {
+        self.nodes.get(id.index()).and_then(|n| n.shape.as_ref())
     }
 
     pub fn edges(&self) -> &[Edge] {

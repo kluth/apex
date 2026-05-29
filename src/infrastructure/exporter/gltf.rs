@@ -1,4 +1,4 @@
-use crate::domain::air::topology::{EdgeType, NodeId, Topology};
+use crate::domain::air::topology::{EdgeType, NodeId, NodeShape, Topology};
 use gltf_json as json;
 use serde_json::{json as json_macro, to_vec};
 use std::fs::File;
@@ -35,12 +35,26 @@ impl GltfExporter {
             let id = NodeId::new(i);
             let display_name = topology.node_name(id).unwrap_or("Unknown");
             let pos = topology.node_position(id).unwrap_or_default();
+            
+            let mut extras_map = serde_json::Map::new();
+            if let Some(shape) = topology.node_shape(id) {
+                let shape_json = match shape {
+                    NodeShape::Sphere { radius } => json_macro!({ "type": "sphere", "radius": radius }),
+                    NodeShape::Box { width, height, depth } => json_macro!({ "type": "box", "width": width, "height": height, "depth": depth }),
+                    NodeShape::Capsule { radius, length } => json_macro!({ "type": "capsule", "radius": radius, "length": length }),
+                    NodeShape::Cylinder { radius, length } => json_macro!({ "type": "cylinder", "radius": radius, "length": length }),
+                };
+                extras_map.insert("shape".to_string(), shape_json);
+            }
 
             nodes.push(json::Node {
                 camera: None,
                 children: None,
                 extensions: Default::default(),
-                extras: None,
+                extras: if extras_map.is_empty() { None } else {
+                    let extras_str = serde_json::to_string(&extras_map).unwrap();
+                    Some(json::extras::RawValue::from_string(extras_str).unwrap())
+                },
                 matrix: None,
                 mesh: None,
                 name: Some(format!("APEX_NODE_{}", display_name)),
@@ -119,7 +133,7 @@ mod tests {
     #[test]
     fn test_gltf_export_file_creation() {
         let mut topology = Topology::new();
-        topology.add_node("Head".to_string(), Vector3::default(), None);
+        topology.add_node("Head".to_string(), Vector3::default(), None, None);
 
         let exporter = GltfExporter::new();
         let path = "test_export.flat.glb";

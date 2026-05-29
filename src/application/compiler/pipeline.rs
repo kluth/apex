@@ -1,10 +1,10 @@
 use crate::application::compiler::parser::{OrganAst, ParseError, Parser, ReceptorAst};
 use crate::application::compiler::validator::{BiologicalValidator, ValidationError};
-use crate::domain::air::topology::{EdgeType, NodeId, Topology};
+use crate::domain::air::topology::{EdgeType, NodeId, NodeShape, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
-use crate::domain::ast::skin::Skin;
+use crate::domain::ast::skin::{CollisionPrimitive, Skin};
 use crate::domain::ast::synapse::Synapse;
 use crate::domain::movement::cpg::Cpg;
 use crate::domain::biomechanics::rigid_body::Vector3;
@@ -83,6 +83,7 @@ impl CompilerPipeline {
                 bone.id().to_string(),
                 bone.position(),
                 bone.mesh_reference().cloned(),
+                None,
             );
             bone_map.insert(bone.id().to_string(), id);
         }
@@ -122,7 +123,7 @@ impl CompilerPipeline {
             
             // ANATOMICAL ANCHOR: Place muscle node at source for cleaner synaptic wiring
             let s_pos = topology.node_position(*source_id).unwrap_or_default();
-            let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), s_pos, None);
+            let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), s_pos, None, None);
             muscle_map.insert(muscle.id().to_string(), m_node_id);
         }
 
@@ -151,7 +152,7 @@ impl CompilerPipeline {
                 }
             }
 
-            let id = topology.add_node(format!("CPG_{}", id_str), pos, None);
+            let id = topology.add_node(format!("CPG_{}", id_str), pos, None, None);
             cpg_map.insert(id_str.to_string(), id);
         }
 
@@ -204,7 +205,20 @@ impl CompilerPipeline {
             for (_i, hull) in skin.hulls().iter().enumerate() {
                 let local_pos = Vector3 { x: hull.local_offset.0, y: hull.local_offset.1, z: hull.local_offset.2 };
                 let world_pos = anchor_pos + local_pos;
-                let h_node_id = topology.add_node(format!("SKIN_HULL_{}_{}", skin.id(), hull.id), world_pos, None);
+                
+                let shape = match hull.primitive {
+                    CollisionPrimitive::Sphere { radius } => NodeShape::Sphere { radius },
+                    CollisionPrimitive::Box { width, height, depth } => NodeShape::Box { width, height, depth },
+                    CollisionPrimitive::Capsule { radius, length } => NodeShape::Capsule { radius, length },
+                    CollisionPrimitive::Cylinder { radius, length } => NodeShape::Cylinder { radius, length },
+                };
+
+                let h_node_id = topology.add_node(
+                    format!("SKIN_HULL_{}_{}", skin.id(), hull.id),
+                    world_pos,
+                    None,
+                    Some(shape),
+                );
                 topology.add_edge(*anchor_id, h_node_id, format!("{}_{}", skin.id(), hull.id), EdgeType::Integument);
             }
         }
@@ -218,7 +232,17 @@ impl CompilerPipeline {
             
             // Place organ slightly offset from anchor
             let world_pos = anchor_pos + Vector3 { x: 0.0, y: -0.05, z: 0.1 }; 
-            let o_node_id = topology.add_node(format!("ORGAN_NODE_{}", organ.id), world_pos, None);
+            
+            // Derive radius from volume: V = 4/3 * PI * r^3 => r = (3V / 4PI)^(1/3)
+            let radius = ( (3.0 * organ.volume) / (4.0 * std::f64::consts::PI) ).powf(1.0/3.0);
+            let shape = NodeShape::Sphere { radius };
+
+            let o_node_id = topology.add_node(
+                format!("ORGAN_NODE_{}", organ.id),
+                world_pos,
+                None,
+                Some(shape),
+            );
             topology.add_edge(*anchor_id, o_node_id, organ.id.clone(), EdgeType::Visceral);
         }
 

@@ -10,8 +10,8 @@ mod tests {
         // Red Phase: We expect to insert nodes and link them via edges.
         let mut topology = Topology::new();
 
-        let femur_id = topology.add_node("Femur".to_string(), Vector3::default(), None);
-        let tibia_id = topology.add_node("Tibia".to_string(), Vector3::default(), None);
+        let femur_id = topology.add_node("Femur".to_string(), Vector3::default(), None, None);
+        let tibia_id = topology.add_node("Tibia".to_string(), Vector3::default(), None, None);
 
         assert_eq!(femur_id.index(), 0);
         assert_eq!(tibia_id.index(), 1);
