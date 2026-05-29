@@ -1,23 +1,30 @@
-// === RIGHT HAND: CARPALS, METACARPALS & PHALANGES ===
+// === RIGHT HAND: ANATOMICAL WIREFRAME ===
 
-// Carpals (8)
-bone R_Scaphoid  { mass = 0.05 kg; position = (0.68, 1.51, 0.04); }
-bone R_Lunate    { mass = 0.05 kg; position = (0.68, 1.51, 0.02); }
-bone R_Triquetrum{ mass = 0.05 kg; position = (0.68, 1.51, 0.0); }
-bone R_Pisiform  { mass = 0.05 kg; position = (0.68, 1.51, -0.02); }
-bone R_Trapezium { mass = 0.05 kg; position = (0.70, 1.50, 0.05); }
-bone R_Trapezoid { mass = 0.05 kg; position = (0.70, 1.50, 0.03); }
-bone R_Capitate  { mass = 0.05 kg; position = (0.70, 1.50, 0.01); }
-bone R_Hamate    { mass = 0.05 kg; position = (0.70, 1.50, -0.02); }
+// Carpals - Proximal Row
+bone R_Scaphoid   { mass = 0.05 kg; position = (0.68, 1.51, 0.04); }
+bone R_Lunate     { mass = 0.05 kg; position = (0.68, 1.51, 0.02); }
+bone R_Triquetrum { mass = 0.05 kg; position = (0.68, 1.51, 0.0); }
+bone R_Pisiform   { mass = 0.05 kg; position = (0.68, 1.51, -0.02); }
 
-joint JRC1 { source = R_Radius; target = R_Scaphoid; }
-joint JRC2 { source = R_Scaphoid; target = R_Lunate; }
-joint JRC3 { source = R_Lunate; target = R_Triquetrum; }
-joint JRC4 { source = R_Triquetrum; target = R_Pisiform; }
-joint JRC5 { source = R_Radius; target = R_Trapezium; }
-joint JRC6 { source = R_Trapezium; target = R_Trapezoid; }
-joint JRC7 { source = R_Trapezoid; target = R_Capitate; }
-joint JRC8 { source = R_Capitate; target = R_Hamate; }
+// Carpals - Distal Row
+bone R_Trapezium  { mass = 0.05 kg; position = (0.70, 1.50, 0.05); }
+bone R_Trapezoid  { mass = 0.05 kg; position = (0.70, 1.50, 0.03); }
+bone R_Capitate   { mass = 0.05 kg; position = (0.70, 1.50, 0.01); }
+bone R_Hamate     { mass = 0.05 kg; position = (0.70, 1.50, -0.02); }
+
+// Wrist connections
+joint J_RWr1 { source = R_Radius; target = R_Scaphoid; }
+joint J_RWr2 { source = R_Ulna;   target = R_Triquetrum; }
+
+// Carpal Inter-connections (The Gitter)
+joint J_RC1 { source = R_Scaphoid; target = R_Lunate; }
+joint J_RC2 { source = R_Lunate;   target = R_Triquetrum; }
+joint J_RC3 { source = R_Triquetrum; target = R_Pisiform; }
+joint J_RC4 { source = R_Scaphoid; target = R_Trapezium; }
+joint J_RC5 { source = R_Lunate;   target = R_Capitate; }
+joint J_RC6 { source = R_Trapezium; target = R_Trapezoid; }
+joint J_RC7 { source = R_Trapezoid; target = R_Capitate; }
+joint J_RC8 { source = R_Capitate;  target = R_Hamate; }
 
 // Metacarpals
 bone R_Meta1 { mass = 0.1 kg; position = (0.72, 1.52, 0.05); }
@@ -28,17 +35,17 @@ bone R_Meta5 { mass = 0.1 kg; position = (0.73, 1.44, -0.05); }
 
 joint JRM1 { source = R_Trapezium; target = R_Meta1; }
 joint JRM2 { source = R_Trapezoid; target = R_Meta2; }
-joint JRM3 { source = R_Capitate; target = R_Meta3; }
-joint JRM4 { source = R_Hamate; target = R_Meta4; }
-joint JRM5 { source = R_Hamate; target = R_Meta5; }
+joint JRM3 { source = R_Capitate;  target = R_Meta3; }
+joint JRM4 { source = R_Hamate;    target = R_Meta4; }
+joint JRM5 { source = R_Hamate;    target = R_Meta5; }
 
-// Thumb (2 Phalanges)
+// Thumb
 bone R_Thumb_P { mass = 0.05 kg; position = (0.75, 1.55, 0.08); }
 bone R_Thumb_D { mass = 0.05 kg; position = (0.78, 1.58, 0.1); }
 joint JRT1 { source = R_Meta1;   target = R_Thumb_P; }
 joint JRT2 { source = R_Thumb_P; target = R_Thumb_D; }
 
-// Fingers (3 Phalanges each)
+// Fingers
 bone R_Ind_P { mass = 0.05 kg; position = (0.8, 1.5, 0.04); }
 bone R_Ind_M { mass = 0.05 kg; position = (0.84, 1.5, 0.04); }
 bone R_Ind_D { mass = 0.05 kg; position = (0.88, 1.5, 0.04); }

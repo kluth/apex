@@ -1,23 +1,30 @@
-// === LEFT HAND: CARPALS, METACARPALS & PHALANGES ===
+// === LEFT HAND: ANATOMICAL WIREFRAME ===
 
-// Carpals (8)
-bone L_Scaphoid  { mass = 0.05 kg; position = (-0.68, 1.51, 0.04); }
-bone L_Lunate    { mass = 0.05 kg; position = (-0.68, 1.51, 0.02); }
-bone L_Triquetrum{ mass = 0.05 kg; position = (-0.68, 1.51, 0.0); }
-bone L_Pisiform  { mass = 0.05 kg; position = (-0.68, 1.51, -0.02); }
-bone L_Trapezium { mass = 0.05 kg; position = (-0.70, 1.50, 0.05); }
-bone L_Trapezoid { mass = 0.05 kg; position = (-0.70, 1.50, 0.03); }
-bone L_Capitate  { mass = 0.05 kg; position = (-0.70, 1.50, 0.01); }
-bone L_Hamate    { mass = 0.05 kg; position = (-0.70, 1.50, -0.02); }
+// Carpals - Proximal Row
+bone L_Scaphoid   { mass = 0.05 kg; position = (-0.68, 1.51, 0.04); }
+bone L_Lunate     { mass = 0.05 kg; position = (-0.68, 1.51, 0.02); }
+bone L_Triquetrum { mass = 0.05 kg; position = (-0.68, 1.51, 0.0); }
+bone L_Pisiform   { mass = 0.05 kg; position = (-0.68, 1.51, -0.02); }
 
-joint JLC1 { source = L_Radius; target = L_Scaphoid; }
-joint JLC2 { source = L_Scaphoid; target = L_Lunate; }
-joint JLC3 { source = L_Lunate; target = L_Triquetrum; }
-joint JLC4 { source = L_Triquetrum; target = L_Pisiform; }
-joint JLC5 { source = L_Radius; target = L_Trapezium; }
-joint JLC6 { source = L_Trapezium; target = L_Trapezoid; }
-joint JLC7 { source = L_Trapezoid; target = L_Capitate; }
-joint JLC8 { source = L_Capitate; target = L_Hamate; }
+// Carpals - Distal Row
+bone L_Trapezium  { mass = 0.05 kg; position = (-0.70, 1.50, 0.05); }
+bone L_Trapezoid  { mass = 0.05 kg; position = (-0.70, 1.50, 0.03); }
+bone L_Capitate   { mass = 0.05 kg; position = (-0.70, 1.50, 0.01); }
+bone L_Hamate     { mass = 0.05 kg; position = (-0.70, 1.50, -0.02); }
+
+// Wrist connections
+joint J_LWr1 { source = L_Radius; target = L_Scaphoid; }
+joint J_LWr2 { source = L_Ulna;   target = L_Triquetrum; }
+
+// Carpal Inter-connections (The Gitter)
+joint J_LC1 { source = L_Scaphoid; target = L_Lunate; }
+joint J_LC2 { source = L_Lunate;   target = L_Triquetrum; }
+joint J_LC3 { source = L_Triquetrum; target = L_Pisiform; }
+joint J_LC4 { source = L_Scaphoid; target = L_Trapezium; }
+joint J_LC5 { source = L_Lunate;   target = L_Capitate; }
+joint J_LC6 { source = L_Trapezium; target = L_Trapezoid; }
+joint J_LC7 { source = L_Trapezoid; target = L_Capitate; }
+joint J_LC8 { source = L_Capitate;  target = L_Hamate; }
 
 // Metacarpals
 bone L_Meta1 { mass = 0.1 kg; position = (-0.72, 1.52, 0.05); }
@@ -28,17 +35,17 @@ bone L_Meta5 { mass = 0.1 kg; position = (-0.73, 1.44, -0.05); }
 
 joint JLM1 { source = L_Trapezium; target = L_Meta1; }
 joint JLM2 { source = L_Trapezoid; target = L_Meta2; }
-joint JLM3 { source = L_Capitate; target = L_Meta3; }
-joint JLM4 { source = L_Hamate; target = L_Meta4; }
-joint JLM5 { source = L_Hamate; target = L_Meta5; }
+joint JLM3 { source = L_Capitate;  target = L_Meta3; }
+joint JLM4 { source = L_Hamate;    target = L_Meta4; }
+joint JLM5 { source = L_Hamate;    target = L_Meta5; }
 
-// Thumb (2 Phalanges)
+// Thumb
 bone L_Thumb_P { mass = 0.05 kg; position = (-0.75, 1.55, 0.08); }
 bone L_Thumb_D { mass = 0.05 kg; position = (-0.78, 1.58, 0.1); }
 joint JLT1 { source = L_Meta1;   target = L_Thumb_P; }
 joint JLT2 { source = L_Thumb_P; target = L_Thumb_D; }
 
-// Fingers (3 Phalanges each)
+// Fingers
 bone L_Ind_P { mass = 0.05 kg; position = (-0.8, 1.5, 0.04); }
 bone L_Ind_M { mass = 0.05 kg; position = (-0.84, 1.5, 0.04); }
 bone L_Ind_D { mass = 0.05 kg; position = (-0.88, 1.5, 0.04); }
