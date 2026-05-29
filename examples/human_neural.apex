@@ -1,56 +1,33 @@
-// === NEURAL LAYER: AUTONOMIC & MOTOR CONTROL ===
+// === NEURAL LAYER: BIPEDAL GAIT CONTROLLER ===
 
-// --- AUTONOMIC: BREATHING ---
-// Rhythmic oscillator for breathing (0.2 Hz = ~12 breaths per minute)
-cpg Brain_Breathing {
-    frequency = 0.2 Hz;
+// --- CENTRAL PATTERN GENERATORS (CPGs) ---
+// Rhythmic oscillator for the gait cycle (0.8 Hz = ~1 step per 1.25s)
+cpg Brain_Gait_Cycle {
+    frequency = 0.8 Hz;
 }
 
-// Synaptic wiring to the Diaphragm
-synapse Syn_Breath_L {
-    source = Brain_Breathing;
-    target = Diaphragm_L;
-    weight = 1.0;
-}
+// --- SYNPATIC WIRING: LEFT LEG (Phase A) ---
+// Swing Phase: Hip flexors and Knee extensors
+synapse Syn_Gait_L_Hip    { source = Brain_Gait_Cycle; target = L_PsoasMaj;    weight = 1.0; }
+synapse Syn_Gait_L_Knee   { source = Brain_Gait_Cycle; target = L_RectusFem;   weight = 1.2; }
+// Stance Phase: Glutes and Calf (using negative weight for reciprocal inhibition proxy)
+synapse Syn_Gait_L_Push   { source = Brain_Gait_Cycle; target = L_Gastrocnem;  weight = -0.8; }
 
-synapse Syn_Breath_R {
-    source = Brain_Breathing;
-    target = Diaphragm_R;
-    weight = 1.0;
-}
+// --- SYNPATIC WIRING: RIGHT LEG (Phase B - Reciprocal) ---
+// Using reciprocal inhibition: Right leg fires when Left leg relaxes
+synapse Syn_Gait_R_Hip    { source = Brain_Gait_Cycle; target = R_PsoasMaj;    weight = -1.0; }
+synapse Syn_Gait_R_Knee   { source = Brain_Gait_Cycle; target = R_RectusFem;   weight = -1.2; }
+synapse Syn_Gait_R_Push   { source = Brain_Gait_Cycle; target = R_Gastrocnem;  weight = 1.0; }
 
-// --- MOTOR: LOCOMOTION (Simplified Gait Proxy) ---
-cpg Brain_Gait {
-    frequency = 0.5 Hz; // 1 step per 2 seconds
+// --- POSTURAL STABILIZATION ---
+cpg Brain_Balance {
+    frequency = 0.0 Hz; // Steady firing
 }
+synapse Syn_Bal_Back_L    { source = Brain_Balance; target = L_Erector_L; weight = 0.6; }
+synapse Syn_Bal_Back_R    { source = Brain_Balance; target = R_Erector_L; weight = 0.6; }
+synapse Syn_Bal_Core_L    { source = Brain_Balance; target = L_RectusAbd; weight = 0.4; }
+synapse Syn_Bal_Core_R    { source = Brain_Balance; target = R_RectusAbd; weight = 0.4; }
 
-// Left Leg Swing
-synapse Syn_Gait_L_Swing {
-    source = Brain_Gait;
-    target = L_RectusFem;
-    weight = 1.2;
-}
-
-// Right Leg Swing (Using same CPG for now, would need phase offset in reality)
-synapse Syn_Gait_R_Swing {
-    source = Brain_Gait;
-    target = R_RectusFem;
-    weight = 1.2;
-}
-
-// Postural Stability (Constant firing)
-cpg Brain_Core {
-    frequency = 0.0 Hz; // DC signal
-}
-
-synapse Syn_Core_L {
-    source = Brain_Core;
-    target = L_Erector_L;
-    weight = 0.5;
-}
-
-synapse Syn_Core_R {
-    source = Brain_Core;
-    target = R_Erector_L;
-    weight = 0.5;
-}
+// --- SENSORY FEEDBACK ---
+receptor Rec_Gait_L_Impact { target = L_Gastrocnem; type = GTO; }
+receptor Rec_Gait_R_Impact { target = R_Gastrocnem; type = GTO; }

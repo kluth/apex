@@ -120,6 +120,10 @@ impl Topology {
         self.nodes.get(id.index()).map(|n| n.position)
     }
 
+    pub fn get_node_mut(&mut self, id: NodeId) -> Option<&mut Node> {
+        self.nodes.get_mut(id.index())
+    }
+
     pub fn node_mesh_reference(&self, id: NodeId) -> Option<&MeshReference> {
         self.nodes
             .get(id.index())

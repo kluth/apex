@@ -4,10 +4,12 @@ use crate::domain::air::topology::{EdgeType, NodeId, Topology};
 use crate::domain::ast::bone::Bone;
 use crate::domain::ast::joint::Joint;
 use crate::domain::ast::muscle::Muscle;
-use crate::domain::ast::skin::{CollisionPrimitive, Skin};
+use crate::domain::ast::skin::Skin;
 use crate::domain::ast::synapse::Synapse;
 use crate::domain::movement::cpg::Cpg;
 use crate::domain::biomechanics::rigid_body::Vector3;
+use crate::domain::biomechanics::world::{World, Synapse as PhysicsSynapse};
+use crate::domain::biomechanics::constraints::{DistanceConstraint, MuscleActuator};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -50,7 +52,7 @@ impl CompilerPipeline {
         let ast = parser.parse_organism()?;
 
         // 2. Validate & Lower
-        self.lower(ast.bones, ast.joints, ast.muscles, ast.cpgs, ast.synapses, ast.receptors, ast.skins)
+        self.lower(ast.bones, ast.joints, ast.muscles, ast.cpgs, ast.synapses, ast.receptors, vec![])
             .map_err(Into::into)
     }
 
@@ -63,7 +65,7 @@ impl CompilerPipeline {
         cpgs: Vec<Cpg>,
         synapses: Vec<Synapse>,
         receptors: Vec<ReceptorAst>,
-        skins: Vec<Skin>,
+        _skins: Vec<Skin>,
     ) -> Result<Topology, ValidationError> {
         // 1. Validation Pass
         BiologicalValidator::validate_bones(&bones)?;
@@ -82,6 +84,35 @@ impl CompilerPipeline {
                 bone.mesh_reference().cloned(),
             );
             bone_map.insert(bone.id().to_string(), id);
+        }
+
+        // CPGs (Nerves) become Neural Nodes
+        for cpg in &cpgs {
+            let id_str = cpg.id();
+            let mut pos = Vector3 { x: 0.0, y: 2.1, z: 0.0 }; // Fallback "Brain"
+
+            if id_str.starts_with("Nerve_") {
+                let parts: Vec<&str> = id_str.split('_').collect();
+                if parts.len() >= 2 {
+                    let vert_id = parts[1];
+                    let side = parts.get(2).cloned().unwrap_or("");
+                    if let Some(node_id) = bone_map.get(vert_id) {
+                        pos = topology.node_position(*node_id).unwrap_or(pos);
+                        if side == "L" { pos.x -= 0.05; }
+                        else { pos.x += 0.05; }
+                    }
+                }
+            } else if id_str.starts_with("CN_") {
+                if let Some(node_id) = bone_map.get("Occipital") {
+                    pos = topology.node_position(*node_id).unwrap_or(pos);
+                    if id_str.contains("_L") { pos.x -= 0.05; }
+                    else { pos.x += 0.05; }
+                    pos.z += 0.05;
+                }
+            }
+
+            let id = topology.add_node(format!("CPG_{}", id_str), pos, None);
+            cpg_map.insert(id_str.to_string(), id);
         }
 
         // Joints become Structural Edges
@@ -117,38 +148,10 @@ impl CompilerPipeline {
                 EdgeType::Actuator,
             );
             
+            // ANATOMICAL FIX: Muscle node is placed at the Origin (Source) to make synapses look integrated.
             let s_pos = topology.node_position(*source_id).unwrap_or_default();
             let m_node_id = topology.add_node(format!("MUSCLE_NODE_{}", muscle.id()), s_pos, None);
             muscle_map.insert(muscle.id().to_string(), m_node_id);
-        }
-
-        // CPGs (Nerves) become Neural Nodes
-        for cpg in &cpgs {
-            let id_str = cpg.id();
-            let mut pos = Vector3 { x: 0.0, y: 2.1, z: 0.0 }; // Fallback "Brain"
-
-            if id_str.starts_with("Nerve_") {
-                let parts: Vec<&str> = id_str.split('_').collect();
-                if parts.len() >= 2 {
-                    let vert_id = parts[1];
-                    let side = parts.get(2).cloned().unwrap_or("");
-                    if let Some(node_id) = bone_map.get(vert_id) {
-                        pos = topology.node_position(*node_id).unwrap_or(pos);
-                        if side == "L" { pos.x -= 0.05; }
-                        else { pos.x += 0.05; }
-                    }
-                }
-            } else if id_str.starts_with("CN_") {
-                if let Some(node_id) = bone_map.get("Occipital") {
-                    pos = topology.node_position(*node_id).unwrap_or(pos);
-                    if id_str.contains("_L") { pos.x -= 0.05; }
-                    else { pos.x += 0.05; }
-                    pos.z += 0.05;
-                }
-            }
-
-            let id = topology.add_node(format!("CPG_{}", id_str), pos, None);
-            cpg_map.insert(id_str.to_string(), id);
         }
 
         // Synapses become Neural Edges
@@ -174,6 +177,7 @@ impl CompilerPipeline {
                 ValidationError::MissingIdentifier(receptor.muscle_id.clone())
             })?;
             
+            // Receptors provide feedback back to the Nerve.
             let side = if receptor.id.contains("_L") { "_L" } else { "_R" };
             let target_cpg_id = cpg_map.keys()
                 .find(|k| k.contains(side))
@@ -190,34 +194,73 @@ impl CompilerPipeline {
             }
         }
 
-        // Skins become Integument Nodes + Edges
-        for skin in skins {
-            let anchor_id = bone_map.get(skin.target_bone_id()).ok_or_else(|| {
-                ValidationError::MissingIdentifier(skin.target_bone_id().to_string())
-            })?;
-            let anchor_pos = topology.node_position(*anchor_id).unwrap_or_default();
+        Ok(topology)
+    }
 
-            for (i, hull) in skin.hulls().iter().enumerate() {
-                let local_pos = Vector3 { x: hull.local_offset.0, y: hull.local_offset.1, z: hull.local_offset.2 };
-                let world_pos = anchor_pos + local_pos;
-                
-                // Add a node for each hull to represent its visual center
-                let hull_node_id = topology.add_node(
-                    format!("SKIN_HULL_{}_{}", skin.id(), hull.id),
-                    world_pos,
-                    None,
-                );
+    /// Creates a physics World initialized with bodies and constraints from source text.
+    pub fn compile_world(&self, source: &str) -> Result<(World, Topology), CompileError> {
+        let mut parser = Parser::new(source);
+        let ast = parser.parse_organism()?;
+        
+        let topology = self.lower(
+            ast.bones.clone(), 
+            ast.joints.clone(), 
+            ast.muscles.clone(), 
+            ast.cpgs.clone(), 
+            ast.synapses.clone(), 
+            ast.receptors.clone(), 
+            vec![]
+        )?;
 
-                // Add Integument edge
-                topology.add_edge(
-                    *anchor_id,
-                    hull_node_id,
-                    format!("{}_{}", skin.id(), hull.id),
-                    EdgeType::Integument,
-                );
+        let mut world = World::new(20);
+        let mut bone_map: HashMap<String, usize> = HashMap::new();
+        let mut actuator_map: HashMap<String, usize> = HashMap::new();
+        let mut cpg_idx_map: HashMap<String, usize> = HashMap::new();
+
+        // 1. Add Bodies
+        for bone in &ast.bones {
+            let idx = world.add_body(bone.position().x, bone.position().y, bone.position().z, 1.0);
+            bone_map.insert(bone.id().to_string(), idx);
+        }
+
+        // 2. Add CPGs
+        for cpg in &ast.cpgs {
+            let idx = world.add_cpg(cpg.clone());
+            cpg_idx_map.insert(cpg.id().to_string(), idx);
+        }
+
+        // 3. Add Structural Constraints (Joints)
+        for joint in &ast.joints {
+            let s_idx = bone_map.get(joint.source_bone_id()).unwrap();
+            let t_idx = bone_map.get(joint.target_bone_id()).unwrap();
+            
+            let b_s = ast.bones.iter().find(|b| b.id() == joint.source_bone_id()).unwrap();
+            let b_t = ast.bones.iter().find(|b| b.id() == joint.target_bone_id()).unwrap();
+            let dist = (b_s.position() - b_t.position()).length();
+            
+            world.add_constraint(DistanceConstraint::new(*s_idx, *t_idx, dist, 0.0));
+        }
+
+        // 4. Add Actuators (Muscles)
+        for muscle in &ast.muscles {
+            let s_idx = bone_map.get(muscle.source_bone_id()).unwrap();
+            let t_idx = bone_map.get(muscle.target_bone_id()).unwrap();
+            let actuator = MuscleActuator::new(*s_idx, *t_idx, 1500.0); // max force
+            let idx = world.add_actuator(actuator);
+            actuator_map.insert(muscle.id().to_string(), idx);
+        }
+
+        // 5. Add Synapses
+        for synapse in &ast.synapses {
+            if let (Some(&c_idx), Some(&a_idx)) = (cpg_idx_map.get(synapse.source_cpg_id()), actuator_map.get(synapse.target_muscle_id())) {
+                world.add_synapse(PhysicsSynapse {
+                    source_cpg_idx: c_idx,
+                    target_actuator_idx: a_idx,
+                    weight: synapse.weight(),
+                });
             }
         }
 
-        Ok(topology)
+        Ok((world, topology))
     }
 }

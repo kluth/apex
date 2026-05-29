@@ -19,6 +19,7 @@ pub enum ParseError {
     CpgNotFound(String),
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct ReceptorAst {
     pub id: String,
     pub muscle_id: String,
