@@ -3,38 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Visual Realism</title>
+    <title>APEX Anatomical Atlas</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { margin: 0; background: #080808; overflow: hidden; font-family: 'Inter', sans-serif; color: #fff; }
         #info { 
-            position: absolute; top: 20px; left: 20px; color: #0f0; z-index: 100; 
-            background: rgba(0,0,0,0.85); padding: 20px; border-left: 4px solid #0f0;
-            box-shadow: 0 0 20px rgba(0,255,0,0.2);
-            pointer-events: none;
+            position: absolute; top: 20px; left: 20px; z-index: 100; 
+            background: rgba(15,15,15,0.95); padding: 25px; border-radius: 4px;
+            border-left: 4px solid #0f0; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px); pointer-events: none;
         }
-        .title { font-weight: bold; font-size: 1.4em; letter-spacing: 2px; margin-bottom: 10px; display: block; }
-        .stat { color: #666; font-size: 0.85em; text-transform: uppercase; }
-        .val { color: #fff; font-family: monospace; font-size: 1.1em; }
+        .title { font-weight: 800; font-size: 1.2em; letter-spacing: 3px; color: #0f0; margin-bottom: 15px; display: block; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .row { margin-bottom: 8px; display: flex; justify-content: space-between; width: 220px; }
+        .label { color: #888; font-size: 0.75em; text-transform: uppercase; font-weight: 600; }
+        .val { color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
         #hot-indicator { 
-            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-            background: #0f0; margin-right: 10px; animation: pulse 2s infinite;
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            background: #0f0; margin-right: 12px; animation: pulse 2s infinite;
         }
-        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-        .muscle-val { color: #f44; }
-        .neural-val { color: #44f; }
-        .skin-val { color: #6cf; }
-        .organ-val { color: #f6f; }
+        @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
     </style>
 </head>
 <body>
     <div id="info">
-        <span class="title"><span id="hot-indicator"></span>APEX :: VISUAL REALISM</span>
-        <span class="stat">Bones:</span> <span id="boneCount" class="val">0</span> / 206<br>
-        <span class="stat">Muscles:</span> <span id="muscles" class="val muscle-val">0</span><br>
-        <span class="stat">Nerves:</span> <span id="nerves" class="val neural-val">0</span><br>
-        <span class="stat">Organs:</span> <span id="organs" class="val organ-val">0</span><br>
-        <span class="stat">Skin Hulls:</span> <span id="skin" class="val skin-val">0</span><br>
-        <span class="stat">Status:</span> <span id="status" class="val">OK</span>
+        <span class="title"><span id="hot-indicator"></span>APEX ATLAS</span>
+        <div class="row"><span class="label">Bones</span><span id="boneCount" class="val">0</span></div>
+        <div class="row"><span class="label">Muscles</span><span id="muscles" class="val" style="color: #f44;">0</span></div>
+        <div class="row"><span class="label">Nerves</span><span id="nerves" class="val" style="color: #44f;">0</span></div>
+        <div class="row"><span class="label">Organs</span><span id="organs" class="val" style="color: #f6f;">0</span></div>
+        <div class="row"><span class="label">Integument</span><span id="skin" class="val" style="color: #6cf;">0</span></div>
+        <div class="row" style="margin-top: 10px;"><span class="label">System Status</span><span id="status" class="val">SYNCED</span></div>
     </div>
     
     <script type="importmap">
@@ -52,92 +49,110 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
-        camera.position.set(1.5, 1.5, 2.5);
+        scene.background = new THREE.Color(0x0a0a0a);
+        scene.fog = new THREE.FogExp2(0x0a0a0a, 0.15);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 1000);
+        camera.position.set(2, 1.5, 3);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMappingExposure = 1.2;
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.GridHelper(10, 10, 0x00ff00, 0x111111));
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-        const light = new THREE.DirectionalLight(0xffffff, 1.2);
-        light.position.set(5, 10, 5);
-        scene.add(light);
+        scene.add(new THREE.GridHelper(10, 20, 0x111111, 0x050505));
+        
+        // Studio Lighting
+        scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        keyLight.position.set(5, 10, 5);
+        scene.add(keyLight);
+        
+        const rimLight = new THREE.PointLight(0x66ccff, 2, 10);
+        rimLight.position.set(-5, 2, -5);
+        scene.add(rimLight);
 
         const loader = new GLTFLoader();
-        let currentModel = null;
-        let visualGroup = new THREE.Group();
+        const visualGroup = new THREE.Group();
         scene.add(visualGroup);
 
-        const boneMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.3 });
-        const muscleMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x440000 });
-        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x4444ff, emissive: 0x000044, transparent: true, opacity: 0.6 });
-        const organMat = new THREE.MeshStandardMaterial({ color: 0xff66cc, emissive: 0x330022 });
-        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, transparent: true, opacity: 0.25 });
-        const jointMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+        // Medical Materials
+        const boneMat = new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 0.8, metalness: 0.0 });
+        const muscleMat = new THREE.MeshStandardMaterial({ color: 0xaa1111, roughness: 0.6, emissive: 0x220000 });
+        const neuralMat = new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x000044, transparent: true, opacity: 0.7 });
+        const organMat = new THREE.MeshStandardMaterial({ color: 0xff33aa, emissive: 0x220011, roughness: 0.3 });
+        
+        // High-End Physical Skin
+        const skinMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0xadd8e6, 
+            transparent: true, 
+            opacity: 0.18,
+            transmission: 0.2,
+            thickness: 0.5,
+            roughness: 0.2,
+            metalness: 0.1,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1
+        });
+        
+        const jointMarkerMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 
-        const baseCylinder = new THREE.CylinderGeometry(0.006, 0.006, 1, 6);
+        const baseCylinder = new THREE.CylinderGeometry(0.005, 0.005, 1, 6);
         baseCylinder.translate(0, 0.5, 0);
 
         function getGlbPath() {
             const loc = window.location;
             if (loc.hostname.includes('localhost') || loc.hostname.includes('0.0.0.0')) {
-                if (loc.pathname.includes('/examples/')) return '../human_skeleton.glb?t=' + Date.now();
-                return './human_skeleton.glb?t=' + Date.now();
+                return loc.pathname.includes('/examples/') ? '../human_skeleton.glb' : './human_skeleton.glb';
             }
-            return 'human_skeleton.glb?t=' + Date.now();
+            return 'human_skeleton.glb';
         }
 
         function createPrimitive(shapeData, material) {
             let geom;
             switch(shapeData.type) {
                 case 'sphere':
-                    geom = new THREE.SphereGeometry(shapeData.radius, 16, 16);
+                    geom = new THREE.SphereGeometry(shapeData.radius, 32, 32);
                     break;
                 case 'box':
                     geom = new THREE.BoxGeometry(shapeData.width, shapeData.height, shapeData.depth);
                     break;
                 case 'capsule':
-                    geom = new THREE.CapsuleGeometry(shapeData.radius, shapeData.length, 4, 8);
+                    // radius, length, capSubdivisions, radialSegments
+                    geom = new THREE.CapsuleGeometry(shapeData.radius, shapeData.length, 8, 16);
                     break;
                 case 'cylinder':
-                    geom = new THREE.CylinderGeometry(shapeData.radius, shapeData.radius, shapeData.length, 8);
+                    geom = new THREE.CylinderGeometry(shapeData.radius, shapeData.radius, shapeData.length, 16);
                     break;
                 default:
-                    geom = new THREE.SphereGeometry(0.05, 8, 8);
+                    geom = new THREE.SphereGeometry(0.02, 8, 8);
             }
             return new THREE.Mesh(geom, material);
         }
 
         async function loadModel() {
-            const glbPath = getGlbPath();
-            loader.load(glbPath, (gltf) => {
+            loader.load(getGlbPath() + '?t=' + Date.now(), (gltf) => {
                 visualGroup.clear();
-                if (currentModel) scene.remove(currentModel);
-                currentModel = gltf.scene;
-                scene.add(currentModel);
-                currentModel.updateMatrixWorld(true);
-
                 const nodeMap = new Map();
                 let bCnt = 0, cCnt = 0;
 
-                currentModel.traverse(n => {
+                gltf.scene.traverse(n => {
                     if (n.name.startsWith("APEX_NODE_")) {
                         const name = n.name.replace("APEX_NODE_", "");
                         nodeMap.set(name, n);
                         
                         if (name.startsWith("CPG_")) {
                             cCnt++;
-                            const brainMarker = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), neuralMat);
-                            brainMarker.position.copy(n.position);
-                            visualGroup.add(brainMarker);
+                            const m = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), neuralMat);
+                            m.position.copy(n.position);
+                            visualGroup.add(m);
                         } else if (!name.startsWith("MUSCLE_NODE_") && !name.startsWith("SKIN_HULL_") && !name.startsWith("ORGAN_NODE_")) {
                             bCnt++;
-                            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), jointMat);
-                            marker.position.copy(n.position);
-                            visualGroup.add(marker);
+                            const m = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 6), jointMarkerMat);
+                            m.position.copy(n.position);
+                            visualGroup.add(m);
                         }
                     }
                 });
@@ -160,7 +175,6 @@
                             if (shapeData) {
                                 const mesh = createPrimitive(shapeData, link.type === "skin" ? skinMat : organMat);
                                 mesh.position.copy(t.position);
-                                // Align rotation if it's a limb capsule/cylinder
                                 if (shapeData.type === 'capsule' || shapeData.type === 'cylinder') {
                                     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
                                 }
@@ -171,7 +185,7 @@
                             let mat = boneMat;
                             let scale = 1.0;
                             if (link.type === "muscle") { mat = muscleMat; scale = 0.8; mCnt++; }
-                            else if (link.type === "synapse") { mat = neuralMat; scale = 0.3; }
+                            else if (link.type === "synapse") { mat = neuralMat; scale = 0.4; }
 
                             const mesh = new THREE.Mesh(baseCylinder, mat);
                             mesh.position.copy(s.position);
@@ -185,10 +199,10 @@
                 document.getElementById('muscles').innerText = mCnt;
                 document.getElementById('skin').innerText = sCnt;
                 document.getElementById('organs').innerText = oCnt;
-                document.getElementById('status').innerText = "OK";
+                document.getElementById('status').innerText = "LIVE";
 
             }, undefined, e => {
-                document.getElementById('status').innerText = "FAIL";
+                document.getElementById('status').innerText = "ERROR";
                 console.error(e);
             });
         }
