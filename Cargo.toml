@@ -8,7 +8,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-opentelemetry = "0.28"
 opentelemetry = "0.27"
-opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"] }
 opentelemetry-otlp = "0.27"
 tokio = { version = "1", features = ["full"] }
 ultraviolet = { version = "0.10.0", features = ["f64"] }
